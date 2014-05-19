@@ -2078,6 +2078,7 @@ procedure TMainIDE.SetupSpeedButtons;
     Result.Parent := MainIDEBar.pnlSpeedButtons;
     Result.Images := IDEImages.Images_16;
     Result.AutoSize := true;
+    Result.ButtonHeight:=26;
   end;
 
 begin
@@ -2096,6 +2097,7 @@ begin
 
   MainIDEBar.tbViewDebug := CreateToolBar('tbViewDebug');
   MainIDEBar.tbStandard := CreateToolBar('tbStandard');
+  MainIDEBar.tbViewDebug.EdgeBorders:=[];
 
   MainIDEBar.NewUnitSpeedBtn     := CreateButton(MainIDEBar.tbStandard , 'NewUnitSpeedBtn'    , 'item_unit'                 , @mnuNewUnitClicked, lisMenuNewUnit);
   MainIDEBar.NewFormSpeedBtn     := CreateButton(MainIDEBar.tbStandard , 'NewFormSpeedBtn'    , 'item_form'                 , @mnuNewFormClicked, lisMenuNewForm);
