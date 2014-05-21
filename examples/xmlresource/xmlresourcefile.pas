@@ -19,10 +19,8 @@ type
   private
     class procedure QuickReadXML(s: TStream; out AComponentName, AClassName, ALCLVersion: string);
   public
-    class function FindResourceDirective(Source: TObject): boolean; override;
-    class function ResourceDirectiveFilename: string; override;
-    class function GetUnitResourceFilename(AUnitFilename: string;
-      {%H-}Loading: boolean): string; override;
+    class function DefaultResourceFileExt: string; override;
+    class function FindResourceDirective(Source: TObject; out AResourceFileExt: string): boolean; override;
     class procedure TextStreamToBinStream(ATxtStream, ABinStream: TExtMemoryStream); override;
     class procedure BinStreamToTextStream(ABinStream, ATextStream: TExtMemoryStream); override;
     class function GetClassNameFromStream(s: TStream; out IsInherited: Boolean): shortstring; override;
@@ -141,7 +139,7 @@ type
     constructor Create; override;
     function GetLocalizedName: string; override;
     function GetLocalizedDescription: string; override;
-    function GetImplementationSource(const Filename, SourceName, ResourceName: string): string; override;
+    //function GetImplementationSource(const Filename, SourceName, ResourceName: string): string; override;
   end;
 
 
@@ -167,6 +165,7 @@ constructor TFileDescPascalUnitWithXMLResource.Create;
 begin
   inherited Create;
   ResourceClass:=TForm;
+  DefaultResFileExt := '.xml';  
 end;
 
 function TFileDescPascalUnitWithXMLResource.GetLocalizedName: string;
@@ -179,7 +178,7 @@ begin
   Result:='Create a new unit with a LCL form with XML resource file.';
 end;
 
-function TFileDescPascalUnitWithXMLResource.GetImplementationSource(
+(*function TFileDescPascalUnitWithXMLResource.GetImplementationSource(
   const Filename, SourceName, ResourceName: string): string;
 var
   ResourceFilename: String;
@@ -194,7 +193,7 @@ begin
       end;
     rtRes: Result := '{$R *.xml}'+LE+LE;
   end;
-end;
+end;*)
 
 { TXMLObjectWriter }
 
@@ -611,7 +610,12 @@ begin
   end;
 end;
 
-class function TXMLUnitResourcefileFormat.FindResourceDirective(Source: TObject): boolean;
+class function TXMLUnitResourcefileFormat.DefaultResourceFileExt: string;
+begin
+  result := '.xml';
+end;
+
+class function TXMLUnitResourcefileFormat.FindResourceDirective(Source: TObject; out AResourceFileExt: string): boolean;
 var
   cb: TCodeBuffer;
   nx,ny,nt: integer;
@@ -619,16 +623,6 @@ begin
 //  result := CodeToolBoss.FindResourceDirective(Source as TCodeBuffer,1,1,cb,nx,ny,nt, ResourceDirectiveFilename,false);
 end;
 
-class function TXMLUnitResourcefileFormat.ResourceDirectiveFilename: string;
-begin
-  result := '*.xml';
-end;
-
-class function TXMLUnitResourcefileFormat.GetUnitResourceFilename(
-  AUnitFilename: string; Loading: boolean): string;
-begin
-  result := ChangeFileExt(AUnitFilename,'.xml');
-end;
 
 class procedure TXMLUnitResourcefileFormat.TextStreamToBinStream(ATxtStream,
   ABinStream: TExtMemoryStream);

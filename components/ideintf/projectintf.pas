@@ -913,6 +913,7 @@ end;
 constructor TFileDescPascalUnitWithResource.Create;
 begin
   inherited Create;
+  DefaultResFileExt := '.lfm';
   FDeclareClassVariable := True;
 end;
 
@@ -959,7 +960,8 @@ begin
         ResourceFilename:=TrimFilename(ExtractFilenameOnly(Filename)+DefaultResFileExt);
         Result:='initialization'+LE+'  {$I '+ResourceFilename+'}'+LE+LE;
       end;
-    rtRes: Result := '{$R *.lfm}'+LE+LE;
+    rtRes: Result := '{$R *'+DefaultResFileExt+'}'+LE+LE;
+
   end;
 end;
 

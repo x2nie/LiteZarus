@@ -115,7 +115,7 @@ type
         var NewUnitName: string): TModalResult;
     function CreateNewForm(NewUnitInfo: TUnitInfo;
         AncestorType: TPersistentClass; ResourceCode: TCodeBuffer;
-        UseCreateFormStatements, DisableAutoSize: Boolean): TModalResult;
+        UseCreateFormStatements, DisableAutoSize: Boolean; FileExt: string): TModalResult;
     function NewUniqueComponentName(Prefix: string): string;
 
     // methods for 'save unit'
@@ -746,7 +746,7 @@ begin
       if LFMSourceText<>'' then begin
         // the NewFileDescriptor provides a custom .lfm source
         // -> put it into a new .lfm buffer and load it
-        LFMFilename:=ChangeFileExt(NewUnitInfo.Filename,'.lfm');
+        LFMFilename:=ChangeFileExt(NewUnitInfo.Filename,NewFileDescriptor.DefaultResFileExt);
         LFMCode:=CodeToolBoss.CreateFile(LFMFilename);
         LFMCode.Source:=LFMSourceText;
         //debugln('TLazSourceFileManager.NewEditorFile A ',LFMFilename);
@@ -772,7 +772,7 @@ begin
         DisableAutoSize:=true;
         Result := CreateNewForm(NewUnitInfo, AncestorType, nil,
                                 NewFileDescriptor.UseCreateFormStatements,
-                                DisableAutoSize);
+                                DisableAutoSize, NewFileDescriptor.DefaultResFileExt);
         if DisableAutoSize and (NewUnitInfo.Component<>nil)
         and (NewUnitInfo.Component is TControl) then
           TControl(NewUnitInfo.Component).EnableAutoSizing;
@@ -800,7 +800,7 @@ begin
   if (not NewUnitInfo.HasResources)
   and FilenameIsPascalUnit(NewUnitInfo.Filename) then begin
     //debugln('TLazSourceFileManager.NewFile no HasResources ',NewUnitInfo.Filename);
-    LFMFilename:=ChangeFileExt(NewUnitInfo.Filename,'.lfm');
+    LFMFilename:=ChangeFileExt(NewUnitInfo.Filename,NewFileDescriptor.DefaultResFileExt);    
     SearchFlags:=[];
     if NewUnitInfo.IsPartOfProject then
       Include(SearchFlags,pfsfOnlyProjectFiles);
@@ -2628,7 +2628,7 @@ end;
 
 function TLazSourceFileManager.CreateNewForm(NewUnitInfo: TUnitInfo;
   AncestorType: TPersistentClass; ResourceCode: TCodeBuffer;
-  UseCreateFormStatements, DisableAutoSize: Boolean): TModalResult;
+  UseCreateFormStatements, DisableAutoSize: Boolean; FileExt: string): TModalResult;
 var
   NewComponent: TComponent;
   new_x, new_y: integer;
@@ -2647,7 +2647,7 @@ begin
   end;
   //debugln('TLazSourceFileManager.CreateNewForm B ',ResourceCode.Filename);
   ResourceCode.Source:='{ '+LRSComment+' }';
-  CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,'.lfm'));
+  CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,FileExt));
 
   // clear formeditor
   FormEditor1.ClearSelection;
@@ -3233,7 +3233,10 @@ begin
         if (not AnUnitInfo.IsVirtual) or (sfSaveToTestDir in Flags) then
         begin
           // save lfm file
-          LFMFilename:=AnUnitInfo.UnitResourceFileformat.GetUnitResourceFilename(AnUnitInfo.Filename,false);
+          if AnUnitInfo.ResourceFileExt <> EmptyStr then //already detected, use
+             LFMFilename:= ChangeFileExt(AnUnitInfo.Filename, AnUnitInfo.ResourceFileExt)
+          else //unknown, ask to Format's generator
+            LFMFilename:=AnUnitInfo.UnitResourceFileformat.GetUnitResourceFilename(AnUnitInfo.Filename,false);
           if AnUnitInfo.IsVirtual then
             LFMFilename:=AppendPathDelim(MainBuildBoss.GetTestBuildDirectory)+LFMFilename;
           if LFMCode=nil then begin

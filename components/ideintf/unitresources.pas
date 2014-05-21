@@ -7,6 +7,9 @@
   Author:
     Joost van der Sluis
 
+  Contributors:
+    x2nie
+
   Abstract:
     Change the resource type (e.g. .lfm) of forms.
     Every unit can have one resource file. Default is .lfm.
@@ -27,9 +30,11 @@ type
 
   TUnitResourcefileFormat = class
   public
-    class function  FindResourceDirective(Source: TObject): boolean; virtual; abstract;
-    class function  ResourceDirectiveFilename: string; virtual; abstract;
-    class function  GetUnitResourceFilename(AUnitFilename: string; Loading: boolean): string; virtual; abstract;
+    class function  DefaultResourceFileExt: string; virtual; abstract;
+    class function  FindResourceDirective(Source: TObject;
+      out AResourceFileExt: string ): boolean; virtual; abstract;
+    class function  ResourceDirectiveFilename: string; virtual;
+    class function  GetUnitResourceFilename(AUnitFilename: string; Loading: boolean): string; virtual; 
     class procedure TextStreamToBinStream(ATxtStream, ABinStream: TExtMemoryStream); virtual; abstract;
     class procedure BinStreamToTextStream(ABinStream, ATextStream: TExtMemoryStream); virtual; abstract;
     class function  GetClassNameFromStream(s: TStream; out IsInherited: Boolean): shortstring; virtual; abstract;
@@ -64,6 +69,28 @@ end;
 function GetUnitResourcefileFormats: TUnitResourcefileFormatArr;
 begin
   result := GUnitResourcefileFormats;
+end;
+
+{ TUnitResourcefileFormat }
+
+{class function TUnitResourcefileFormat.FindResourceDirective(
+  Source: TObject; out AResourceFileExt: string): boolean;
+begin
+  AResourceFileExt := EmptyStr;
+  result := FindResourceDirective(Source);
+  if result then
+    AResourceFileExt := DefaultResourceFileExt;
+end;}
+
+class function TUnitResourcefileFormat.GetUnitResourceFilename(
+  AUnitFilename: string; Loading: boolean): string;
+begin
+  result := ChangeFileExt(AUnitFilename,DefaultResourceFileExt);
+end;
+
+class function TUnitResourcefileFormat.ResourceDirectiveFilename: string;
+begin
+  result := '*' + DefaultResourceFileExt;
 end;
 
 end.

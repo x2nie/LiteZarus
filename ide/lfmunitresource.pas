@@ -41,8 +41,9 @@ type
 
   TLFMUnitResourcefileFormat = class(TUnitResourcefileFormat)
   public
-    class function FindResourceDirective(Source: TObject): boolean; override;
-    class function ResourceDirectiveFilename: string; override;
+    class function DefaultResourceFileExt: string; override;
+    class function  FindResourceDirective(Source: TObject;
+      out AResourceFileExt: string ): boolean; overload; override;
     class function GetUnitResourceFilename(AUnitFilename: string; {%H-}Loading: boolean): string; override;
     class procedure TextStreamToBinStream(ATxtStream, ABinStream: TExtMemoryStream); override;
     class procedure BinStreamToTextStream(ABinStream, ATextStream: TExtMemoryStream); override;
@@ -64,23 +65,31 @@ uses
 
 { TLFMUnitResourcefileFormat }
 
-class function TLFMUnitResourcefileFormat.FindResourceDirective(Source: TObject): boolean;
+class function TLFMUnitResourcefileFormat.DefaultResourceFileExt: string;
+begin
+  Result := '.lfm';
+end;
+
+class function TLFMUnitResourcefileFormat.FindResourceDirective(
+  Source: TObject; out AResourceFileExt: string): boolean;
 var
   NewCode: TCodeBuffer;
   NewX,NewY,NewTopLine: integer;
   CodeBuf: TCodeBuffer;
 begin
+  AResourceFileExt := self.DefaultResourceFileExt;
   CodeBuf:=Source as TCodeBuffer;
   Result := CodeToolBoss.FindResourceDirective(CodeBuf,1,1,
     NewCode,NewX,NewY,NewTopLine, ResourceDirectiveFilename,false);
-  if (not Result) and (ResourceDirectiveFilename<>'*.dfm') then
+  if (not Result) and (ResourceDirectiveFilename<>'*.dfm') then begin
     Result := CodeToolBoss.FindResourceDirective(CodeBuf,1,1,
                    NewCode,NewX,NewY,NewTopLine, '*.dfm',false);
-end;
-
-class function TLFMUnitResourcefileFormat.ResourceDirectiveFilename: string;
-begin
-  Result := '*.lfm';
+    if Result then
+      AResourceFileExt := '.dfm'
+    else
+      AResourceFileExt := EmptyStr;
+  end;
+  //Result:=inherited FindResourceDirective(Source, ResourceFileExt);
 end;
 
 class function TLFMUnitResourcefileFormat.GetUnitResourceFilename(

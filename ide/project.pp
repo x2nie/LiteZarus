@@ -285,6 +285,7 @@ type
     fOnLoadSaveFilename: TOnLoadSaveFilename;
     FOnUnitNameChange: TOnUnitNameChange;
     FProject: TProject;
+    fResourceFileExt: string;
     FRevertLockCount: integer;// >0 means IDE is currently reverting this unit
     FRunFileIfActive: boolean;
     FSessionModified: boolean;
@@ -431,6 +432,7 @@ type
     property ComponentName: string read fComponentName write fComponentName;
     property ComponentResourceName: string read fComponentResourceName
                                            write fComponentResourceName;
+    property ResourceFileExt : string read fResourceFileExt write fResourceFileExt;
     property ComponentFallbackClasses: TStrings read FComponentFallbackClasses
       write FComponentFallbackClasses; // classname to componentclass, for not registered classes in lfm
     property ComponentState: TWindowState read FComponentState write FComponentState;
@@ -2361,6 +2363,7 @@ function TUnitInfo.GetUnitResourceFileformat: TUnitResourcefileFormatClass;
 var
   ResourceFormats : TUnitResourcefileFormatArr;
   i: integer;
+  Ext : string;
 begin
   if not assigned(FUnitResourceFileformat) then
   begin
@@ -2371,10 +2374,11 @@ begin
       ResourceFormats := GetUnitResourcefileFormats;
       for i := 0 to high(ResourceFormats) do
       begin
-        if ResourceFormats[i].FindResourceDirective(Source) then
+        if ResourceFormats[i].FindResourceDirective(Source, Ext) then
         begin
           FUnitResourceFileformat:=ResourceFormats[i];
           Result := FUnitResourceFileformat;
+          self.ResourceFileExt:=Ext;
           Exit;
         end;
       end;
