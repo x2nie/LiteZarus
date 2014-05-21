@@ -408,7 +408,7 @@ type
     procedure HideSearchSpeedButtonClick(Sender: TObject);
     procedure MsgCtrlPopupMenuClose(Sender: TObject);
     procedure MsgCtrlPopupMenuPopup(Sender: TObject);
-    procedure OnSwitchFilterClick(Sender: TObject);
+    procedure OnSelectFilterClick(Sender: TObject);
     procedure SaveAllToFileMenuItemClick(Sender: TObject);
     procedure SaveShownToFileMenuItemClick(Sender: TObject);
     procedure SearchEditChange(Sender: TObject);
@@ -471,9 +471,9 @@ var
   MsgQuickFixMenuSection: TIDEMenuSection;
   MsgClearMenuItem: TIDEMenuCommand;
   MsgHideMsgOfTypeMenuItem: TIDEMenuCommand;
-  MsgUnhideMsgTypeMenuSection: TIDEMenuSection;
-    MsgUnhideMsgOfTypeMenuSection: TIDEMenuSection;
-    MsgClearHideMsgTypesMenuItem: TIDEMenuCommand;
+  MsgUnhideMsgTypesMenuSection: TIDEMenuSection;
+    MsgUnhideMsgOneTypeMenuSection: TIDEMenuSection;
+    MsgUnhideAllMsgTypesMenuItem: TIDEMenuCommand;
   MsgHideBelowMenuSection: TIDEMenuSection;
     MsgHideWarningsMenuItem: TIDEMenuCommand;
     MsgHideNotesMenuItem: TIDEMenuCommand;
@@ -482,8 +482,8 @@ var
     MsgHideDebugMenuItem: TIDEMenuCommand;
     MsgHideNoneMenuItem: TIDEMenuCommand;
   MsgHideHintsWithoutPosMenuItem: TIDEMenuCommand;
-  MsgSwitchFilterMenuSection: TIDEMenuSection;
-    MsgFiltersMenuSection: TIDEMenuSection;
+  MsgFiltersMenuSection: TIDEMenuSection;
+    MsgSelectFilterMenuSection: TIDEMenuSection;
     MsgAddFilterMenuItem: TIDEMenuCommand;
   MsgCopyMenuSection: TIDEMenuSection;
     MsgCopyFilenameMenuItem: TIDEMenuCommand;
@@ -519,43 +519,43 @@ begin
   MsgQuickFixMenuSection := RegisterIDEMenuSection(Root, 'Quick Fix');
   MsgClearMenuItem := RegisterIDEMenuCommand(Root, 'Clear', 'Clear');
   MsgHideMsgOfTypeMenuItem:=RegisterIDEMenuCommand(Root,'HideMsgOfType','');
-  MsgUnhideMsgTypeMenuSection:=RegisterIDEMenuSection(Root,'UnhideMsgType');
-    Parent:=MsgUnhideMsgTypeMenuSection;
+  MsgUnhideMsgTypesMenuSection:=RegisterIDEMenuSection(Root,'UnhideMsgType');
+    Parent:=MsgUnhideMsgTypesMenuSection;
     Parent.ChildsAsSubMenu:=true;
-    Parent.Caption:='Unhide message type';
-    MsgUnhideMsgOfTypeMenuSection:=RegisterIDEMenuSection(Parent,'UnhideMsgOfTypeSection');
-    MsgClearHideMsgTypesMenuItem:=RegisterIDEMenuCommand(Parent,'Unhide all','Unhide all');
+    Parent.Caption:='Unhide Messages of Type';
+    MsgUnhideMsgOneTypeMenuSection:=RegisterIDEMenuSection(Parent,'UnhideMsgOfTypeSection');
+    MsgUnhideAllMsgTypesMenuItem:=RegisterIDEMenuCommand(Parent,'Unhide All','Unhide All');
   MsgHideBelowMenuSection:=RegisterIDEMenuSection(Root,'Hide Below Section');
     Parent:=MsgHideBelowMenuSection;
     Parent.ChildsAsSubMenu:=true;
-    Parent.Caption:='Hide non urgent messages ...';
-    MsgHideWarningsMenuItem:=RegisterIDEMenuCommand(Parent,'Hide warnings','Hide warnings');
-    MsgHideNotesMenuItem:=RegisterIDEMenuCommand(Parent,'Hide notes','Hide notes');
-    MsgHideHintsMenuItem:=RegisterIDEMenuCommand(Parent,'Hide hints','Hide hints');
-    MsgHideVerboseMenuItem:=RegisterIDEMenuCommand(Parent,'Hide verbose messages','Hide verbose messages');
-    MsgHideDebugMenuItem:=RegisterIDEMenuCommand(Parent,'Hide debug messages','Hide debug messages');
-    MsgHideNoneMenuItem:=RegisterIDEMenuCommand(Parent,'Hide none, do not hide by urgency','Hide none, do not hide by urgency');
-  MsgHideHintsWithoutPosMenuItem:=RegisterIDEMenuCommand(Root, 'Hide hints without source position', 'Hide hints without source position');
-  MsgSwitchFilterMenuSection:=RegisterIDEMenuSection(Root,'Switch Filter Section');
-    Parent:=MsgSwitchFilterMenuSection;
+    Parent.Caption:='Hide non urgent Messages ...';
+    MsgHideWarningsMenuItem:=RegisterIDEMenuCommand(Parent,'Hide Warnings','Hide Warnings and below');
+    MsgHideNotesMenuItem:=RegisterIDEMenuCommand(Parent,'Hide Notes','Hide Notes and below');
+    MsgHideHintsMenuItem:=RegisterIDEMenuCommand(Parent,'Hide Hints','Hide Hints and below');
+    MsgHideVerboseMenuItem:=RegisterIDEMenuCommand(Parent,'Hide Verbose Messages','Hide Verbose Messages and below');
+    MsgHideDebugMenuItem:=RegisterIDEMenuCommand(Parent,'Hide Debug Messages','Hide Debug Messages and below');
+    MsgHideNoneMenuItem:=RegisterIDEMenuCommand(Parent,'Hide None, do not hide by urgency','Hide None, do not hide by urgency');
+  MsgHideHintsWithoutPosMenuItem:=RegisterIDEMenuCommand(Root, 'Hide Hints without Source Position', 'Hide Hints without Source Position');
+  MsgFiltersMenuSection:=RegisterIDEMenuSection(Root,'Switch Filter Section');
+    Parent:=MsgFiltersMenuSection;
     Parent.ChildsAsSubMenu:=true;
     Parent.Caption:='Switch Filter Settings ...';
-    MsgFiltersMenuSection:=RegisterIDEMenuSection(Parent,'Filters');
-    MsgAddFilterMenuItem:=RegisterIDEMenuCommand(Parent,'Add Filter','Add filter ...');
+    MsgSelectFilterMenuSection:=RegisterIDEMenuSection(Parent,'Filters');
+    MsgAddFilterMenuItem:=RegisterIDEMenuCommand(Parent,'Add Filter','Add Filter ...');
   MsgCopyMenuSection:=RegisterIDEMenuSection(Root,'Copy');
     Parent:=MsgCopyMenuSection;
     Parent.ChildsAsSubMenu:=true;
     Parent.Caption:='Copy ...';
-    MsgCopyFilenameMenuItem:=RegisterIDEMenuCommand(Parent,'Filename','Copy file name to clipboard');
+    MsgCopyFilenameMenuItem:=RegisterIDEMenuCommand(Parent,'Filename','Copy File Name to Clipboard');
     MsgCopyMsgMenuItem := RegisterIDEMenuCommand(Parent, 'Selected',lisCopySelectedMessagesToClipboard);
-    MsgCopyShownMenuItem := RegisterIDEMenuCommand(Parent, 'Shown', 'Copy shown messages to clipboard');
-    MsgCopyAllMenuItem:=RegisterIDEMenuCommand(Parent,'All','Copy all/original messages to clipboard');
+    MsgCopyShownMenuItem := RegisterIDEMenuCommand(Parent, 'Shown', lisCopyAllShownMessagesToClipboard);
+    MsgCopyAllMenuItem:=RegisterIDEMenuCommand(Parent,'All','Copy All/Original Messages to Clipboard');
   MsgSaveToFileMenuSection:=RegisterIDEMenuSection(Root,'Save');
     Parent:=MsgSaveToFileMenuSection;
     Parent.ChildsAsSubMenu:=true;
     Parent.Caption:='Save ...';
-    MsgSaveShownToFileMenuItem:=RegisterIDEMenuCommand(Parent,'Save shown messages to file ...','Shown');
-    MsgSaveAllToFileMenuItem:=RegisterIDEMenuCommand(Parent,'Save all/original messages to file ...','All');
+    MsgSaveShownToFileMenuItem:=RegisterIDEMenuCommand(Parent,'Save Shown Messages to File','Save Shown Messages to File ...');
+    MsgSaveAllToFileMenuItem:=RegisterIDEMenuCommand(Parent,'Save All Messages to File','Save All/Original Messages to File ...');
   MsgFilenameStyleMenuSection:=RegisterIDEMenuSection(Root,'Filename Styles');
     Parent:=MsgFilenameStyleMenuSection;
     Parent.ChildsAsSubMenu:=true;
@@ -563,8 +563,8 @@ begin
     MsgFileStyleShortMenuItem:=RegisterIDEMenuCommand(Parent,'Short','Short, no path');
     MsgFileStyleRelativeMenuItem:=RegisterIDEMenuCommand(Parent,'Relative','Relative');
     MsgFileStyleFullMenuItem:=RegisterIDEMenuCommand(Parent,'Full','Full');
-  MsgTranslateMenuItem:=RegisterIDEMenuCommand(Root, 'Translate', 'Translate');
-  MsgShowIDMenuItem:=RegisterIDEMenuCommand(Root, 'ShowID', 'Show message type ID');
+  MsgTranslateMenuItem:=RegisterIDEMenuCommand(Root, 'Translate', 'Translate the English Messages');
+  MsgShowIDMenuItem:=RegisterIDEMenuCommand(Root, 'ShowID', 'Show Message Type ID');
   MsgAboutToolMenuItem:=RegisterIDEMenuCommand(Root, 'About', 'About Tool');
 end;
 
@@ -2580,7 +2580,7 @@ function TMessagesCtrl.GetHeaderText(View: TLMsgWndView): string;
 begin
   Result:=View.Caption;
   if View.SummaryMsg<>'' then
-    Result+=', '+View.SummaryMsg;
+    Result+=': '+View.SummaryMsg;
   if mcoShowStats in Options then begin
     Result+=GetStats(View.Lines);
   end;
@@ -2930,16 +2930,18 @@ procedure TMessagesFrame.MsgCtrlPopupMenuPopup(Sender: TObject);
     HideItem: TLMVFilterHideMsgType;
     i: Integer;
     Item: TIDEMenuCommand;
+    Cnt: Integer;
   begin
     // create one menuitem per filter item
-    MsgUnhideMsgTypeMenuSection.Visible:=MessagesCtrl.ActiveFilter.HideMsgTypeCount>0;
-    for i:=0 to MessagesCtrl.ActiveFilter.HideMsgTypeCount-1 do begin
-      if i>=MsgUnhideMsgOfTypeMenuSection.Count then begin
-        Item:=RegisterIDEMenuCommand(MsgUnhideMsgOfTypeMenuSection,'MsgUnhideOfType'+IntToStr(i),'');
+    Cnt:=MessagesCtrl.ActiveFilter.HideMsgTypeCount;
+    MsgUnhideMsgTypesMenuSection.Visible:=Cnt>0;
+    for i:=0 to Cnt-1 do begin
+      if i>=MsgUnhideMsgOneTypeMenuSection.Count then begin
+        Item:=RegisterIDEMenuCommand(MsgUnhideMsgOneTypeMenuSection,'MsgUnhideOfType'+IntToStr(i),'');
         Item.Tag:=i;
         Item.OnClick:=@UnhideMsgTypeClick;
       end else
-        Item:=MsgUnhideMsgTypeMenuSection.Items[i] as TIDEMenuCommand;
+        Item:=MsgUnhideMsgOneTypeMenuSection.Items[i] as TIDEMenuCommand;
       HideItem:=MessagesCtrl.ActiveFilter.HideMsgTypes[i];
       s:=HideItem.SubTool;
       if HideItem.MsgID<>0 then
@@ -2950,10 +2952,9 @@ procedure TMessagesFrame.MsgCtrlPopupMenuPopup(Sender: TObject);
       Item.Caption:=s;
     end;
     // delete old menu items
-    i:=MessagesCtrl.ActiveFilter.HideMsgTypeCount;
-    while MsgUnhideMsgTypeMenuSection.Count>i do
-      MsgUnhideMsgTypeMenuSection[i].Free;
-    MsgClearHideMsgTypesMenuItem.OnClick:=@ClearHideMsgTypesMenuItemClick;
+    while MsgUnhideMsgOneTypeMenuSection.Count>Cnt do
+      MsgUnhideMsgOneTypeMenuSection[Cnt].Free;
+    MsgUnhideAllMsgTypesMenuItem.OnClick:=@ClearHideMsgTypesMenuItemClick;
   end;
 
   procedure UpdateFilterItems;
@@ -2961,22 +2962,23 @@ procedure TMessagesFrame.MsgCtrlPopupMenuPopup(Sender: TObject);
     i: Integer;
     Filter: TLMsgViewFilter;
     Item: TIDEMenuCommand;
+    Cnt: Integer;
   begin
-    for i:=0 to MessagesCtrl.FilterCount-1 do begin
+    Cnt:=MessagesCtrl.FilterCount;
+    for i:=0 to Cnt-1 do begin
       Filter:=MessagesCtrl.Filters[i];
-      if i>=MsgSwitchFilterMenuSection.Count then begin
-        Item:=RegisterIDEMenuCommand(MsgSwitchFilterMenuSection,'MsgSwitchFilter'+IntToStr(i),'');
+      if i>=MsgSelectFilterMenuSection.Count then begin
+        Item:=RegisterIDEMenuCommand(MsgSelectFilterMenuSection,'MsgSelectFilter'+IntToStr(i),'');
         Item.Tag:=i;
-        Item.OnClick:=@OnSwitchFilterClick;
+        Item.OnClick:=@OnSelectFilterClick;
       end else
-        Item:=MsgSwitchFilterMenuSection[i] as TIDEMenuCommand;
+        Item:=MsgSelectFilterMenuSection[i] as TIDEMenuCommand;
       Item.Caption:=Filter.Caption;
       Item.Checked:=Filter=MessagesCtrl.ActiveFilter;
     end;
     // delete old menu items
-    i:=MessagesCtrl.FilterCount;
-    while MsgSwitchFilterMenuSection.Count>i do
-      MsgSwitchFilterMenuSection[i].Free;
+    while MsgSelectFilterMenuSection.Count>Cnt do
+      MsgSelectFilterMenuSection[Cnt].Free;
 
     MsgAddFilterMenuItem.OnClick:=@AddFilterMenuItemClick;
   end;
@@ -3107,7 +3109,7 @@ begin
   end;
 end;
 
-procedure TMessagesFrame.OnSwitchFilterClick(Sender: TObject);
+procedure TMessagesFrame.OnSelectFilterClick(Sender: TObject);
 var
   Filter: TLMsgViewFilter;
   Item: TIDEMenuCommand;

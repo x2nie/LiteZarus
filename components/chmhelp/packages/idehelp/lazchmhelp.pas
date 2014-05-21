@@ -27,8 +27,11 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LazLogger, LazFileUtils, LazHelpIntf, HelpIntfs,
-  LazConfigStorage, PropEdits, LazIDEIntf, IDEDialogs, LHelpControl, Controls,
-  UTF8Process, ChmLangRef, ChmLcl, ChmProg;
+  LazConfigStorage, PropEdits, LazIDEIntf, IDEDialogs,
+  {$IFDEF EnableNewExtTools}
+  IDEExternToolIntf,
+  {$ENDIF}
+  LHelpControl, Controls, UTF8Process, ChmLangRef, ChmLcl, ChmProg;
   
 resourcestring
   HELP_CURRENT_MENU  = '&Help';
@@ -245,15 +248,20 @@ end;
 
 function TChmHelpViewer.CheckBuildLHelp: Integer;
 var
-  Proc: TProcessUTF8;
   Lazbuild: String;
   LHelpProject: String;
+  LHelpProjectDir: String;
   WS: String;
-  LastWasEOL: Boolean;
-  BufC: Char;
+  PCP: String;
+  {$IFDEF EnableNewExtTools}
+  Tool: TIDEExternalToolOptions;
+  {$ELSE}
+  Proc: TProcessUTF8;
   Buffer: array[0..511] of char;
   BufP: Integer;
-  PCP: String;
+  BufC: Char;
+  LastWasEOL: Boolean;
+  {$ENDIF}
 begin
   Result := mrCancel;
 
@@ -266,14 +274,15 @@ begin
     Exit;
   end;
 
-  LHelpProject := '$(LazarusDir)/components/chmhelp/lhelp/lhelp.lpi';
+  LHelpProject := '$(LazarusDir)'+SetDirSeparators('/components/chmhelp/lhelp/lhelp.lpi');
   if not IDEMacros.SubstituteMacros(LHelpProject) then exit;
-  LHelpProject:=TrimFilename(SetDirSeparators(LHelpProject));
+  LHelpProject:=TrimFilename(LHelpProject);
   if not FileExistsUTF8(LHelpProject) then
   begin
     debugln(['TChmHelpViewer.CheckBuildLHelp failed because lhelp.lpi not found']);
     Exit;
   end;
+  LHelpProjectDir := ExtractFilePath(LHelpProject);
 
   WS := '--ws='+LCLPlatformDirNames[WidgetSet.LCLPlatform];
   PCP := '--pcp='+LazarusIDE.GetPrimaryConfigPath;
@@ -282,8 +291,24 @@ begin
   //if Result <> mrYes then
   //  Exit;
 
+  {$IFDEF EnableNewExtTools}
+  Tool:=TIDEExternalToolOptions.Create;
+  try
+    Tool.Title:='- Building lhelp -';
+    Tool.WorkingDirectory:=LHelpProjectDir;
+    Tool.Executable:=Lazbuild;
+    Tool.CmdLineParams:=QuotedStr(WS)+' '+QuotedStr(PCP)+' '+QuotedStr(LHelpProject);
+    Tool.Scanners.Add(SubToolFPC);
+    Tool.Scanners.Add(SubToolMake);
+    if RunExternalTool(Tool) then
+      Result:=mrOk;
+  finally
+    Tool.Free;
+  end;
+
+  {$ELSE}
   Proc := TProcessUTF8.Create(nil);
-  {$if FPC_FULLVERSION<20400}
+  {$if FPC_FULLVERSION<20604}
   Proc.InheritHandles := false;
   {$endif}
   {$if (fpc_version=2) and (fpc_release<5)}
@@ -305,9 +330,6 @@ begin
   IDEMessagesWindow.BeginBlock;
   IDEMessagesWindow.AddMsg('- Building lhelp -','',0);
 
-  LHelpProject := '$(LazarusDir)/components/chmhelp/lhelp/';
-  IDEMacros.SubstituteMacros(LHelpProject);
-  LHelpProject:=TrimFilename(SetDirSeparators(LHelpProject));
 
   while Proc.Running do begin
     while Proc.Output.NumBytesAvailable > 0 do
@@ -318,7 +340,7 @@ begin
         if not(BufC in [#13, #10]) then
         begin
 
-          IDEMessagesWindow.AddMsg(PChar(@Buffer[0]),LHelpProject,1);
+          IDEMessagesWindow.AddMsg(PChar(@Buffer[0]),LHelpProjectDir,1);
           Buffer[0] := BufC;
           BufP := 1;
           LastWasEOL:=False;
@@ -343,7 +365,7 @@ begin
   end;
 
   if BufP > 0 then
-    IDEMessagesWindow.AddMsg(PChar(@Buffer[0]),LHelpProject,0);
+    IDEMessagesWindow.AddMsg(PChar(@Buffer[0]),LHelpProjectDir,0);
 
 
   if Proc.ExitStatus = 0 then
@@ -352,7 +374,8 @@ begin
 
   IDEMessagesWindow.EndBlock;
 
-  if Result = mrOK then
+  if Result = mrOK then ;
+  {$ENDIF}
 end;
 
 function TChmHelpViewer.GetLazBuildEXE(out ALazBuild: String): Boolean;
