@@ -375,6 +375,12 @@ var
   ScrollOffset: TPoint;
   CurBounds: TRect;
 begin
+  if ComponentIsIcon(AComponent) then
+  begin
+    Result.X := LeftFromDesignInfo(AComponent.DesignInfo);
+    Result.Y := TopFromDesignInfo(AComponent.DesignInfo);
+    Exit;
+  end;
   Result:=Point(0,0);
   while AComponent<>nil do begin
     Parent:=AComponent.GetParentComponent;
@@ -451,6 +457,10 @@ begin
         and (not ComponentIsSelectable(Child)) then
           continue;
         GetBounds(Child,ChildBounds);
+        if ComponentIsIcon(Child) then
+          OffsetRect(ChildBounds,ScrollOffset.X,
+                               ScrollOffset.Y)
+        else///x2nie
         OffsetRect(ChildBounds,ClientArea.Left+ScrollOffset.X,
                                ClientArea.Top+ScrollOffset.Y);
         //DebugLn(['TDesignerMediator.ComponentAtPos ChildBounds=',dbgs(ChildBounds),' p=',dbgs(p)]);

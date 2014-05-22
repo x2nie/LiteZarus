@@ -130,14 +130,17 @@ var
 begin
   inherited Paint;
   with Canvas do begin
-    Brush.Color:=clWhite;
-    ARect:=Rect(FrameWidth,FrameWidth,
-        Self.ClientWidth-FrameWidth,
-        Self.ClientHeight-FrameWidth);
-    FillRect(ARect);
-    ARect:=Rect(0,0,Self.ClientWidth+1,Self.ClientHeight+1);
-    Pen.Color:=clBlack;
-    Frame3d(ARect, FrameWidth, bvLowered);
+    if LookupRoot is TDataModule then
+    begin
+      Brush.Color:=clWhite;
+      ARect:=Rect(FrameWidth,FrameWidth,
+          Self.ClientWidth-FrameWidth,
+          Self.ClientHeight-FrameWidth);
+      FillRect(ARect);
+      ARect:=Rect(0,0,Self.ClientWidth+1,Self.ClientHeight+1);
+      Pen.Color:=clBlack;
+      Frame3d(ARect, FrameWidth, bvLowered);
+    end;
     if (Mediator<>nil) and (LookupRoot<>nil) then
       Mediator.Paint;
   end;
