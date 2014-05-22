@@ -563,6 +563,7 @@ var
   ButtonTree: TAVLTree;
   Node: TAVLTreeNode;
   ScrollBox: TScrollBox;
+  RowHeight : integer;
   //WSClientRect: TRect;
 begin
   //DebugLn(['TComponentPalette.ReAlignButtons ',Page.Caption,' ',Page.ClientWidth]);
