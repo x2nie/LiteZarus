@@ -78,6 +78,7 @@ type
     fUnregisteredIcon: TCustomBitmap;
     fSelectButtonIcon: TCustomBitmap;
     fUpdatingPageControl: boolean;
+    FAdjustedBtnTop : integer;
     procedure SetPageControl(const AValue: TPageControl);
     procedure SelectionToolClick(Sender: TObject);
     procedure ComponentBtnMouseDown(Sender: TObject; Button: TMouseButton;
@@ -88,6 +89,7 @@ type
     procedure CreatePopupMenu;
     procedure UnselectAllButtons;
     function SortPagesAndCompsUserOrder: Boolean;
+    procedure ScrollBoxOnScrolled(Sender: TObject); //to keep first button visible
   protected
     procedure DoBeginUpdate; override;
     procedure DoEndUpdate(Changed: boolean); override;
@@ -134,7 +136,22 @@ uses
   MainBase;
 
 const
-  OVERVIEW_PANEL_WIDTH = 20;
+  OVERVIEW_PANEL_WIDTH = 22;
+  BUTTON_MIN_MARGIN = 3;
+
+type
+
+  { TScrollBox }
+
+  //Helper class (interceptor) used for keeping first button always in home when scrolled
+  TScrollBox = class(Forms.TScrollBox)
+  private
+    FOnScroll: TNotifyEvent;
+  public
+    procedure ScrollBy(DeltaX, DeltaY: Integer); override;
+    property OnScroll : TNotifyEvent read FOnScroll write FOnScroll;
+  end;
+
 
 function CompareRegisteredComponents(Data1, Data2: Pointer): integer;
 var
@@ -586,12 +603,29 @@ begin
     //debugln(['TComponentPalette.ReAlignButtons MaxBtnPerRow=',MaxBtnPerRow,' ButtonTree.Count=',ButtonTree.Count,' ',ButtonX + MaxBtnPerRow * ComponentPaletteBtnWidth]);
     if MaxBtnPerRow<1 then MaxBtnPerRow:=1;
 
+    if ScrollBox.Height div ComponentPaletteBtnHeight <> 1 then
+    begin
+       RowHeight := ComponentPaletteBtnHeight;  // if at least 2 row possible to show, or an half visible
+       FAdjustedBtnTop := BUTTON_MIN_MARGIN;    // top align
+       ScrollBox.VertScrollBar.Increment := ComponentPaletteBtnHeight;
+    end
+    else
+    begin
+       RowHeight := ScrollBox.Height; // use whole space for one row. avoid the next row to be shown partialy.
+       FAdjustedBtnTop := (ScrollBox.Height - ComponentPaletteBtnHeight) div 2; //vertical center
+       ScrollBox.VertScrollBar.Increment := ScrollBox.Height;
+    end;
+
+    //adjust the select button. 
+    ScrollBoxOnScrolled(ScrollBox);
+
+
     j:=0;
     Node:=ButtonTree.FindLowest;
     while Node<>nil do begin
       CurButton:=TSpeedbutton(Node.Data);
       CurButton.SetBounds(ButtonX + (j mod MaxBtnPerRow) * ComponentPaletteBtnWidth,
-                          (j div MaxBtnPerRow) * ComponentPaletteBtnHeight,
+                          (j div MaxBtnPerRow) * RowHeight + FAdjustedBtnTop,
                           CurButton.Width, CurButton.Height);
       //DebugLn(['TComponentPalette.ReAlignButtons ',CurButton.Name,' ',dbgs(CurButton.BoundsRect)]);
       inc(j);
@@ -659,6 +693,24 @@ begin
   end;
 end;
 
+procedure TComponentPalette.ScrollBoxOnScrolled(Sender: TObject);
+var y,y2,t : integer;
+  CurScrollBox : TScrollBox;
+  CurButton: TControl;
+begin
+  CurScrollBox := TScrollBox(Sender);
+  if CurScrollBox.ControlCount = 0 then
+     exit;
+  y:=CurScrollBox.ScreenToControl(point(0,0)).y;
+  y2:=CurScrollBox.ScreenToClient(point(0,0)).y;
+  t := FAdjustedBtnTop + (y2-y);
+  CurButton := CurScrollBox.Controls[0];
+  if CurButton.Top <> t then
+     CurButton.Top := t;
+  if CurButton.Left <> BUTTON_MIN_MARGIN then
+     CurButton.Left := BUTTON_MIN_MARGIN;
+end;
+
 procedure TComponentPalette.UpdateNoteBookButtons;
 var
   OldActivePage: TTabSheet;
@@ -708,6 +760,7 @@ var
         HorzScrollBar.Visible := false;
         VertScrollBar.Increment := ComponentPaletteBtnHeight;
         Parent := aCompPage.PageComponent;
+        OnScroll := @ScrollBoxOnScrolled;
       end;
       PanelRight := TPanel.Create(aCompPage.PageComponent);
       with PanelRight do
@@ -724,7 +777,8 @@ var
       begin
         LoadGlyphFromResourceName(HInstance, 'SelCompPage');
         Flat := True;
-        SetBounds(2,1,16,16);
+        SetBounds(2,1,18,ComponentPaletteBtnHeight);
+        Align := alBottom;
         Hint := 'Click to Select Palette Page';
         OnClick := @MainIDE.SelComponentPageButtonClick;
         Parent := PanelRight;
@@ -918,6 +972,15 @@ begin
   finally
     PageControl.EnableAutoSizing{$IFDEF DebugDisableAutoSizing}('TComponentPalette.ShowHideControls'){$ENDIF};
   end;
+end;
+
+{ TScrollBox }
+
+procedure TScrollBox.ScrollBy(DeltaX, DeltaY: Integer);
+begin
+  inherited;
+  if assigned(FOnScroll) then
+    FOnScroll(self);
 end;
 
 end.
