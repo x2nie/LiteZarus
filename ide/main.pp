@@ -7622,7 +7622,9 @@ begin
 
   if fBuilder=Nil then
     fBuilder:=TLazarusBuilder.Create;
-  {$IFNDEF EnableNewExtTools}
+  {$IFDEF EnableNewExtTools}
+  IDEMessagesWindow.Clear;
+  {$ELSE}
   MessagesView.BeginBlock;
   fBuilder.ExternalTools:=ExternalTools;
   {$ENDIF}
@@ -7750,7 +7752,6 @@ begin
         if ProfInd<>-1 then begin
           // Set current profile temporarily, used by the codetools functions.
           BuildLazProfiles.CurrentIndex:=ProfInd;
-          // does not show message: IDEMessagesWindow.AddMsg('Building: '+BuildLazProfiles.Current.Name,'',-1);
           LazSrcTemplate:=
             CodeToolBoss.DefineTree.FindDefineTemplateByName(StdDefTemplLazarusSources,true);
           if Assigned(LazSrcTemplate) then begin
@@ -8217,6 +8218,9 @@ begin
 
   if MainBuildBoss.CompilerOnDiskChanged then
     MainBuildBoss.RescanCompilerDefines(false,false,false,false);
+
+  if IDEMessagesWindow<>nil then
+    IDEMessagesWindow.Clear;
 end;
 
 {$IFNDEF EnableNewExtTools}
@@ -10546,10 +10550,11 @@ begin
   MessagesView.ClearCustomMessages;
   if CodeToolBoss.ErrorCode<>nil then begin
     Msg:=MessagesView.AddCustomMessage(mluError,CodeToolBoss.ErrorMessage,
-      CodeToolBoss.ErrorCode.Filename,CodeToolBoss.ErrorLine,CodeToolBoss.ErrorColumn);
+      CodeToolBoss.ErrorCode.Filename,CodeToolBoss.ErrorLine,CodeToolBoss.ErrorColumn,
+      'Codetools');
     Msg.Flags:=Msg.Flags+[mlfLeftToken];
   end else
-    MessagesView.AddCustomMessage(mluError,CodeToolBoss.ErrorMessage);
+    MessagesView.AddCustomMessage(mluError,CodeToolBoss.ErrorMessage,'Codetools');
   {$ELSE}
   MessagesView.ClearTillLastSeparator;
   MessagesView.AddSeparator;

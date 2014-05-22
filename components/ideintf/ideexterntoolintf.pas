@@ -267,6 +267,9 @@ type
   { TFPCParser - standard parser for Free Pascal messages, implemented by IDE }
 
   TFPCParser = class(TExtToolParser)
+  private
+    FHideHintsSenderNotUsed: boolean;
+    FHideHintsUnitNotUsedInMainSource: boolean;
   protected
     FFilesToIgnoreUnitNotUsed: TStrings;
   public
@@ -277,6 +280,11 @@ type
     class function GetFPCMsgValues(Msg: TMessageLine; out Value1, Value2: string): boolean; virtual; abstract;
     property FilesToIgnoreUnitNotUsed: TStrings read FFilesToIgnoreUnitNotUsed
                                                 write FFilesToIgnoreUnitNotUsed;
+    property HideHintsSenderNotUsed: boolean read FHideHintsSenderNotUsed
+                                     write FHideHintsSenderNotUsed default true;
+    property HideHintsUnitNotUsedInMainSource: boolean
+                           read FHideHintsUnitNotUsedInMainSource
+                           write FHideHintsUnitNotUsedInMainSource default true;
   end;
 
   { TMakeParser - standard parser for 'make' messages, implemented by IDE }
@@ -388,6 +396,7 @@ type
     FExitStatus: integer;
     FFreeData: boolean;
     FGroup: TExternalToolGroup;
+    FHint: string;
     FResolveMacrosOnExecute: boolean;
     FThread: TThread;
     FWorkerDirectory: string;
@@ -432,11 +441,12 @@ type
     procedure ConsistencyCheck; virtual;
 
     property Title: string read FTitle write SetTitle;
-    property Data: TObject read FData write FData;
-    property FreeData: boolean read FFreeData write FFreeData;
+    property Hint: string read FHint write FHint; // this hint is shown in About dialog
+    property Data: TObject read FData write FData; // free for user, e.g. the IDE uses TIDEExternalToolData
+    property FreeData: boolean read FFreeData write FFreeData default false; // true = auto free Data on destroy
     property Tools: TIDEExternalTools read FTools;
     property Group: TExternalToolGroup read FGroup write SetGroup;
-    property EstimatedLoad: int64 read FEstimatedLoad write FEstimatedLoad; // used for deciding which tool to run next
+    property EstimatedLoad: int64 read FEstimatedLoad write FEstimatedLoad default 1; // used for deciding which tool to run next
 
     // handlers
     procedure RemoveAllHandlersOfObject(AnObject: TObject);
@@ -555,6 +565,24 @@ type
 var
   ExternalToolList: TIDEExternalTools = nil; // will be set by the IDE
 
+const
+  IDEToolCompilePackage = 'Package';
+  IDEToolCompileProject = 'Project';
+type
+
+  { TIDEExternalToolData
+    When the IDE compiles a package or a project it creates an instance and sets
+    TAbstractExternalTool.Data. }
+
+  TIDEExternalToolData = class
+  public
+    Kind: string; // e.g. IDEToolCompilePackage or IDEToolCompileProject
+    ModuleName: string; // e.g. the package name
+    Filename: string; // e.g. the lpi or lpk filename
+    constructor Create(aKind, aModuleName, aFilename: string);
+  end;
+
+
 type
   { TIDEExternalToolOptions }
 
@@ -658,6 +686,15 @@ function dbgs(s: TExternalToolStage): string;
 begin
   Result:='';
   WriteStr(Result,s);
+end;
+
+{ TIDEExternalToolData }
+
+constructor TIDEExternalToolData.Create(aKind, aModuleName, aFilename: string);
+begin
+  Kind:=aKind;
+  ModuleName:=aModuleName;
+  Filename:=aFilename;
 end;
 
 { TFPCParser }
@@ -1524,8 +1561,6 @@ var
 begin
   if (SrcLines=nil) or (SrcLines=Self) or (SrcLines.Count=0) then exit;
   SrcLines.FSortedForSrcPos.Clear;
-  for u:=low(TMessageLineUrgency) to high(TMessageLineUrgency) do
-    UrgencyCounts[u]:=0;
   for i:=0 to SrcLines.Count-1 do begin
     MsgLine:=SrcLines[i];
     //debugln(['TMessageLines.FetchAll ',MsgLine.Msg]);
@@ -1536,6 +1571,8 @@ begin
     LineChanged(MsgLine);
   end;
   SrcLines.fItems.Clear;
+  for u:=low(TMessageLineUrgency) to high(TMessageLineUrgency) do
+    SrcLines.UrgencyCounts[u]:=0;
   IncreaseChangeStamp;
 end;
 

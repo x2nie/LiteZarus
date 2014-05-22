@@ -391,7 +391,6 @@ type
     SearchNextSpeedButton: TSpeedButton;
     SearchPanel: TPanel;
     SearchPrevSpeedButton: TSpeedButton;
-    ShowIDMenuItem: TMenuItem;
     procedure AboutToolMenuItemClick(Sender: TObject);
     procedure AddFilterMenuItemClick(Sender: TObject);
     procedure ClearHideMsgTypesMenuItemClick(Sender: TObject);
@@ -2529,12 +2528,14 @@ begin
     Result+=' ';
 
   // 'error: '
-  if (mcoShowTranslated in Options)
-  and (fUrgencyStyles[Line.Urgency].Translated<>'') then
-    Result+=fUrgencyStyles[Line.Urgency].Translated
-  else
-    Result+=MessageLineUrgencyNames[Line.Urgency];
-  Result+=': ';
+  if Line.Urgency<>mluImportant then begin
+    if (mcoShowTranslated in Options)
+    and (fUrgencyStyles[Line.Urgency].Translated<>'') then
+      Result+=fUrgencyStyles[Line.Urgency].Translated
+    else
+      Result+=MessageLineUrgencyNames[Line.Urgency];
+    Result+=': ';
+  end;
 
   // message id
   if (mcoShowMessageID in Options) and (Line.MsgID<>0) then
@@ -3164,7 +3165,7 @@ end;
 
 procedure TMessagesFrame.ShowIDMenuItemClick(Sender: TObject);
 begin
-  if ShowIDMenuItem.Checked then
+  if MsgShowIDMenuItem.Checked then
     MessagesCtrl.Options:=MessagesCtrl.Options+[mcoShowMessageID]
   else
     MessagesCtrl.Options:=MessagesCtrl.Options-[mcoShowMessageID];
@@ -3319,6 +3320,8 @@ begin
   s+=LineEnding;
   Tool:=View.Tool;
   if Tool<>nil then begin
+    if Tool.Hint<>'' then
+      s+=Tool.Hint+LineEnding+LineEnding;
     Proc:=Tool.Process;
     if Proc<>nil then begin
       if Proc.Executable<>'' then
@@ -3354,6 +3357,7 @@ begin
       Align:=alClient;
       WordWrap:=false;
       ScrollBars:=ssBoth;
+      ReadOnly:=true;
       Parent:=Form;
     end;
     Form.ShowModal;

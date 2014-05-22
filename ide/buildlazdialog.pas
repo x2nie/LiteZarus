@@ -507,7 +507,7 @@ begin
         EnvironmentOverrides.Values['USESVN2REVISIONINC'] := '0';
       end;
       // run
-      Result:=Run(lisIDE);
+      Result:=Run(lisBuildIDE);
       // clean only once. If building failed the user must first fix the error
       // before a clean build is needed.
       ApplyCleanOnce;

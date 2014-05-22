@@ -31,10 +31,13 @@ interface
 
 uses
   Classes, SysUtils, strutils, FileProcs, KeywordFuncLists, IDEExternToolIntf,
-  PackageIntf, LazIDEIntf, ProjectIntf, IDEUtils, CodeToolsFPCMsgs,
-  CodeToolsStructs, CodeCache, CodeToolManager, DirectoryCacher, BasicCodeTools,
-  DefineTemplates, LazUTF8, FileUtil, etMakeMsgParser, EnvironmentOpts;
+  PackageIntf, LazIDEIntf, ProjectIntf, IDEUtils, CompOptsIntf,
+  CodeToolsFPCMsgs, CodeToolsStructs, CodeCache, CodeToolManager,
+  DirectoryCacher, BasicCodeTools, DefineTemplates, LazUTF8, FileUtil,
+  etMakeMsgParser, EnvironmentOpts;
 
+const
+  FPCMsgIDLogo = 11023;
 type
   TFPCMsgFilePool = class;
 
@@ -981,7 +984,7 @@ begin
 
   fLineToMsgID.Clear;
   // FPC logo lines
-  Item:=MsgFile.GetMsg(11023);
+  Item:=MsgFile.GetMsg(FPCMsgIDLogo);
   if Item<>nil then
     fLineToMsgID.AddLines(Item.Pattern,Item.ID);
   // Linking <progname>
@@ -1001,23 +1004,37 @@ begin
 end;
 
 function TIDEFPCParser.CheckForCompilingState(p: PChar): boolean;
+const
+  FPCMsgIDCompiling = 3104;
 var
   AFilename: string;
   MsgLine: TMessageLine;
   OldP: PChar;
 begin
-  Result:=fMsgID=3104;
-  if (fMsgID>0) and not Result then exit;
   OldP:=p;
-  if not CompStr('Compiling ',p) then exit;
   // for example 'Compiling ./subdir/unit1.pas'
+  if fMsgID=0 then begin
+    if not ReadString(p,'Compiling ') then exit(false);
+    fMsgID:=FPCMsgIDCompiling;
+    Result:=true;
+  end else if fMsgID=FPCMsgIDCompiling then begin
+    Result:=true;
+    if not ReadString(p,'Compiling ') then exit;
+  end else begin
+    exit(false);
+  end;
   // add path to history
-  if DirectoryStack=nil then DirectoryStack:=TStringList.Create;
-  inc(p,length('Compiling '));
   if (p^='.') and (p[1]=PathDelim) then
     inc(p,2); // skip ./
-  AFilename:=TrimFilename(p);
-  //DirectoryStack.Add(AFilename);
+  AFilename:=ExtractFilePath(TrimFilename(p));
+  if AFilename<>'' then begin
+    if (not FilenameIsAbsolute(AFilename)) and (Tool.WorkerDirectory<>'') then
+      AFilename:=TrimFilename(AppendPathDelim(Tool.WorkerDirectory)+AFilename);
+    if DirectoryStack=nil then DirectoryStack:=TStringList.Create;
+    if (DirectoryStack.Count=0)
+    or (DirectoryStack[DirectoryStack.Count-1]<>AFilename) then
+      DirectoryStack.Add(AFilename);
+  end;
   MsgLine:=CreateMsgLine;
   MsgLine.Urgency:=mluProgress;
   MsgLine.SubTool:=SubToolFPC;
@@ -1138,7 +1155,8 @@ begin
           MsgItem:=MsgFile.GetMsg(fMsgID);
         Translate(p,MsgItem,TranslatedItem,TranslatedMsg,MsgType);
         if (TranslatedItem=nil) and (MsgItem=nil) then begin
-          debugln(['TFPCParser.CheckForGeneralMessage msgid not found: ',fMsgID]);
+          if ConsoleVerbosity>=0 then
+            debugln(['TFPCParser.CheckForGeneralMessage msgid not found: ',fMsgID]);
         end;
       end;
 
@@ -1357,7 +1375,7 @@ begin
     MsgLine.SubTool:=SubToolFPCRes;
     MsgLine.Urgency:=PrevMsgLine.Urgency;
     MsgLine.Msg:=p;
-    debugln(['TFPCParser.CheckForCompilingResourceErrors ',MsgLine.Msg,' ',dbgs(MsgLine.Urgency)]);
+    //debugln(['TFPCParser.CheckForCompilingResourceErrors ',MsgLine.Msg,' ',dbgs(MsgLine.Urgency)]);
     AddMsgLine(MsgLine);
     exit(true);
   end;
@@ -1417,6 +1435,11 @@ begin
   i:=fLineToMsgID.LineToMsgID(p);
   if i=0 then exit;
   fMsgID:=i;
+  if (fMsgID=FPCMsgIDLogo) and (DirectoryStack<>nil) then begin
+    // a new call of the compiler (e.g. when compiling via make)
+    // => clear stack
+    FreeAndNil(DirectoryStack);
+  end;
   MsgItem:=MsgFile.GetMsg(fMsgID);
   if MsgItem=nil then exit;
   Result:=true;
@@ -1483,8 +1506,8 @@ procedure TIDEFPCParser.ImproveMsgSenderNotUsed(MsgLine: TMessageLine);
 begin
   if (MsgLine.Urgency<=mluVerbose) then exit;
   // check for Sender not used
-  if (MsgLine.Msg='Parameter "Sender" not used') then begin
-    // almost always not important
+  if HideHintsSenderNotUsed
+  and (MsgLine.Msg='Parameter "Sender" not used') then begin
     MsgLine.Urgency:=mluVerbose;
   end;
 end;
@@ -1505,7 +1528,8 @@ begin
   if IndexInStringList(FilesToIgnoreUnitNotUsed,cstFilename,aFilename)>=0 then
   begin
     MsgLine.Urgency:=mluVerbose;
-  end else if FilenameIsAbsolute(aFilename)
+  end else if HideHintsUnitNotUsedInMainSource
+  and FilenameIsAbsolute(aFilename)
   and ((CompareFileExt(aFilename, 'lpr', false)=0)
     or FileExists(ChangeFileExt(aFilename, '.lpk'), aSynchronized))
   then begin
@@ -1773,6 +1797,8 @@ begin
   fLineToMsgID:=TPatternToMsgIDs.Create;
   fFileExists:=TFilenameToPointerTree.Create(false);
   FFilesToIgnoreUnitNotUsed:=TStringList.Create;
+  HideHintsSenderNotUsed:=true;
+  HideHintsUnitNotUsedInMainSource:=true;
 end;
 
 function TIDEFPCParser.FileExists(const Filename: string; aSynchronized: boolean
@@ -1913,9 +1939,11 @@ begin
           MsgItem:=MsgFile.GetMsg(fMsgID);
         Translate(p,MsgItem,TranslatedItem,TranslatedMsg,MsgType);
         if (TranslatedItem=nil) and (MsgItem=nil) then begin
-          debugln(['TFPCParser.CheckForFileLineColMessage msgid not found: ',fMsgID]);
+          if ConsoleVerbosity>=0 then
+            debugln(['TFPCParser.CheckForFileLineColMessage msgid not found: ',fMsgID]);
         end else if MsgType=mluNone then begin
-          debugln(['TFPCParser.CheckForFileLineColMessage msgid has no type: ',fMsgID]);
+          if ConsoleVerbosity>=0 then
+            debugln(['TFPCParser.CheckForFileLineColMessage msgid has no type: ',fMsgID]);
         end;
       end;
     end;
@@ -2015,8 +2043,6 @@ begin
   if CheckForMsgId(p) then exit;
   // check for 'filename(line,column) Error: message'
   if CheckForFileLineColMessage(p) then exit;
-  // check for infos (logo, Linking <Progname>)
-  if CheckForInfos(p) then exit;
   // check for 'Compiling <filename>'
   if CheckForCompilingState(p) then exit;
   // check for 'Assembling <filename>'
@@ -2027,6 +2053,8 @@ begin
   if CheckForLineProgress(p) then exit;
   // check for '<int> Lines compiled, <int>.<int> sec'
   if CheckForLinesCompiled(p) then exit;
+  // check for infos (logo, Linking <Progname>)
+  if CheckForInfos(p) then exit;
   // check for -vx output
   if CheckForExecutableInfo(p) then exit;
   // check for linking errors
@@ -2044,71 +2072,30 @@ begin
   writeln('TFPCParser.ReadLine UNKNOWN: ',Line);
   {$ENDIF}
   Handled:=false;
-
-  {
-            else if (not CompilerOptions.ShowHintsForUnusedUnitsInMainSrc) then
-            begin
-              MainSrcFilename:=CompilerOptions.GetDefaultMainSourceFileName;
-              if (MainSrcFilename<>'')
-              and (IsHintForUnusedUnit(s,MainSrcFilename)) then
-                SkipMessage:=true;
-          if copy(s,j+2,length(s)-j-1)='Error while linking' then begin
-            DoAddLastLinkerMessages(true);
-          end
-          else if copy(s,j+2,length(AsmError))=AsmError then begin
-            DoAddLastAssemblerMessages;
-          end;
-        end;
-
-      // beautify compiler message
-
-      // the compiler always gives short filenames, even if it went into a
-      // subdirectory
-      // -> prepend the current subdirectory
-      Msg:=s;
-      Filename:=TrimFilename(copy(Msg,1,FilenameEndPos));
-      if not FilenameIsAbsolute(Filename) then begin
-        // filename is relative
-        i:=-1;
-        if (fCompilingHistory<>nil) then begin
-          // the compiler writes a line compiling ./subdir/unit.pas
-          // and then writes the messages without any path
-          // -> prepend this subdirectory
-          i:=fCompilingHistory.Count-1;
-          while (i>=0) do begin
-            CurCompHistory:=fCompilingHistory[i];
-            CurCompHistLen:=length(CurCompHistory);
-            CurFilenameLen:=length(Filename);
-            j:=CurCompHistLen-CurFilenameLen;
-            if (j>1) and (CurCompHistory[j]=PathDelim)
-            and (CompareFilenames(
-              copy(CurCompHistory,j+1,CurFilenameLen),Filename)=0) then
-            begin
-              Msg:=copy(CurCompHistory,1,j)+Msg;
-              inc(FilenameEndPos,j);
-              break;
-            end;
-            dec(i);
-          end;
-        end;
-        if i<0 then begin
-          // this file is not a compiled pascal source
-          // -> search for include files
-          Filename:=SearchIncludeFile(Filename);
-          Msg:=Filename+copy(Msg,FileNameEndPos+1,length(Msg)-FileNameEndPos);
-          FileNameEndPos:=length(Filename);
-        end;
-      end;
-  }
 end;
 
 function TIDEFPCParser.LongenFilename(aFilename: string): string;
+var
+  ShortFilename: String;
+  i: Integer;
 begin
   Result:=TrimFilename(aFilename);
   if FilenameIsAbsolute(Result) then exit;
-  if Tool.WorkerDirectory<>'' then begin
-    Result:=AppendPathDelim(Tool.WorkerDirectory)+Result;
+  ShortFilename:=Result;
+  // seach file in the last compiling directories
+  if DirectoryStack<>nil then begin
+    for i:=DirectoryStack.Count-1 downto 0 do begin
+      Result:=AppendPathDelim(DirectoryStack[i])+ShortFilename;
+      if FileExists(Result,false) then exit;
+    end;
   end;
+  // search file in worker directory
+  if Tool.WorkerDirectory<>'' then begin
+    Result:=AppendPathDelim(Tool.WorkerDirectory)+ShortFilename;
+    if FileExists(Result,false) then exit;
+  end;
+  // file not found
+  Result:=ShortFilename;
 end;
 
 procedure TIDEFPCParser.ImproveMessages(aSynchronized: boolean);

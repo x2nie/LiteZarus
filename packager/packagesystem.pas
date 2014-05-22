@@ -3362,6 +3362,7 @@ function TLazPackageGraph.CompilePackage(APackage: TLazPackage;
 var
   {$IFDEF EnableNewExtTools}
   PkgCompileTool: TAbstractExternalTool;
+  FPCParser: TFPCParser;
   {$ELSE}
   PkgCompileTool: TIDEExternalToolOptions;
   BlockBegan: Boolean;
@@ -3520,13 +3521,24 @@ begin
 
         {$IFDEF EnableNewExtTools}
         PkgCompileTool:=ExternalToolList.Add(Format(lisPkgMangCompilingPackage, [APackage.IDAsString]));
-        PkgCompileTool.AddParsers(SubToolFPC);
+        FPCParser:=TFPCParser(PkgCompileTool.AddParsers(SubToolFPC));
+        if (APackage.MainUnit<>nil)
+        and (APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc) then
+          FPCParser.FilesToIgnoreUnitNotUsed.Add(APackage.MainUnit.Filename);
+        FPCParser.HideHintsSenderNotUsed:=not APackage.CompilerOptions.ShowHintsForSenderNotUsed;
+        FPCParser.HideHintsUnitNotUsedInMainSource:=not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
         PkgCompileTool.AddParsers(SubToolMake);
         PkgCompileTool.Process.CurrentDirectory:=APackage.Directory;
         PkgCompileTool.Process.Executable:=CompilerFilename;
         PkgCompileTool.CmdLineParams:=EffectiveCompilerParams;
         PkgCompileTool.Execute;
         PkgCompileTool.WaitForExit;
+        if Note<>'' then
+          PkgCompileTool.Hint:='Compile reason: '+Note;
+        PkgCompileTool.Data:=TIDEExternalToolData.Create(IDEToolCompilePackage,
+          APackage.Name,APackage.Filename);
+        PkgCompileTool.FreeData:=true;
+
         // check if main ppu file was created
         SrcPPUFile:=APackage.GetSrcPPUFilename;
         SrcPPUFileExists:=(SrcPPUFile<>'') and FileExistsUTF8(SrcPPUFile);
