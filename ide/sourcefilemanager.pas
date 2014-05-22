@@ -115,7 +115,7 @@ type
         var NewUnitName: string): TModalResult;
     function CreateNewForm(NewUnitInfo: TUnitInfo;
         AncestorType: TPersistentClass; ResourceCode: TCodeBuffer;
-        UseCreateFormStatements, DisableAutoSize: Boolean; FileExt: string): TModalResult;
+        UseCreateFormStatements, DisableAutoSize: Boolean): TModalResult;
     function NewUniqueComponentName(Prefix: string): string;
 
     // methods for 'save unit'
@@ -742,6 +742,7 @@ begin
     if AncestorType<>nil then begin
       ResType:=MainBuildBoss.GetResourceType(NewUnitInfo);
       LFMSourceText:=NewFileDescriptor.GetResourceSource(NewUnitInfo.ComponentName);
+      NewUnitInfo.ResourceFileExt := NewFileDescriptor.DefaultResFileExt;
       //DebugLn(['TLazSourceFileManager.NewFile LFMSourceText=',LFMSourceText]);
       if LFMSourceText<>'' then begin
         // the NewFileDescriptor provides a custom .lfm source
@@ -772,7 +773,7 @@ begin
         DisableAutoSize:=true;
         Result := CreateNewForm(NewUnitInfo, AncestorType, nil,
                                 NewFileDescriptor.UseCreateFormStatements,
-                                DisableAutoSize, NewFileDescriptor.DefaultResFileExt);
+                                DisableAutoSize);
         if DisableAutoSize and (NewUnitInfo.Component<>nil)
         and (NewUnitInfo.Component is TControl) then
           TControl(NewUnitInfo.Component).EnableAutoSizing;
@@ -2628,7 +2629,7 @@ end;
 
 function TLazSourceFileManager.CreateNewForm(NewUnitInfo: TUnitInfo;
   AncestorType: TPersistentClass; ResourceCode: TCodeBuffer;
-  UseCreateFormStatements, DisableAutoSize: Boolean; FileExt: string): TModalResult;
+  UseCreateFormStatements, DisableAutoSize: Boolean): TModalResult;
 var
   NewComponent: TComponent;
   new_x, new_y: integer;
@@ -2647,7 +2648,7 @@ begin
   end;
   //debugln('TLazSourceFileManager.CreateNewForm B ',ResourceCode.Filename);
   ResourceCode.Source:='{ '+LRSComment+' }';
-  CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,FileExt));
+  CodeToolBoss.CreateFile(ChangeFileExt(NewUnitInfo.Filename,NewUnitInfo.ResourceFileExt));
 
   // clear formeditor
   FormEditor1.ClearSelection;
