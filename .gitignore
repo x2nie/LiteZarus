@@ -9,6 +9,7 @@
 *.exe
 *.lps
 lib
+units
 
 #################
 ## Delphi
