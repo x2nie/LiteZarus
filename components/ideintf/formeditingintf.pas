@@ -78,6 +78,7 @@ type
     procedure MouseDown({%H-}Button: TMouseButton; {%H-}Shift: TShiftState; {%H-}p: TPoint; var {%H-}Handled: boolean); virtual;
     procedure MouseMove({%H-}Shift: TShiftState; {%H-}p: TPoint; var {%H-}Handled: boolean); virtual;
     procedure MouseUp({%H-}Button: TMouseButton; {%H-}Shift: TShiftState; {%H-}p: TPoint; var {%H-}Handled: boolean); virtual;
+    procedure OiNodeGetImageIndex(APersistent: TPersistent; var AIndex: integer); virtual;
 
     property LCLForm: TForm read FLCLForm write SetLCLForm;
     property Designer: TComponentEditorDesigner read FDesigner write SetDesigner;
@@ -526,6 +527,12 @@ end;
 
 procedure TDesignerMediator.MouseUp(Button: TMouseButton; Shift: TShiftState;
   p: TPoint; var Handled: boolean);
+begin
+
+end;
+
+procedure TDesignerMediator.OiNodeGetImageIndex(APersistent: TPersistent;
+  var AIndex: integer);
 begin
 
 end;
