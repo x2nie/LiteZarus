@@ -3958,7 +3958,7 @@ begin
       Color := Palette.DefaultColor
     else
       ColorRefToTQColor(ColorToRGB(LCLObject.Color), Color);
-    Painter := QPainter_create(QWidget_to_QPaintDevice(Widget));
+    Painter := QPainter_create(QWidget_to_QPaintDevice(QWidgetH(Sender)));
     Brush := QBrush_create(@Color, QtSolidPattern);
     try
       QPaintEvent_rect(QPaintEventH(Event), @R);
@@ -6319,7 +6319,7 @@ begin
   if (LCLObject = nil) then
     exit;
   if (QEvent_Type(Event) in [QEventMouseButtonPress, QEventMouseButtonRelease,
-    QEventMouseButtonDblClick, QEventMouseMove, QEventWheel,
+    QEventMouseButtonDblClick, QEventMouseMove, QEventWheel, QEventPaint,
     QEventHoverEnter, QEventHoverMove, QEventHoverLeave, QEventResize]) then
     exit;
   Result := inherited EventFilter(Sender, Event);
@@ -6336,7 +6336,7 @@ begin
   if LCLObject = nil then
     exit;
   BeginEventProcessing;
-  if (QEvent_Type(Event) in [QEventContextMenu, QEventHoverEnter,
+  if (QEvent_Type(Event) in [QEventContextMenu, QEventHoverEnter, QEventPaint,
                              QEventHoverMove, QEventHoverLeave]) then
   begin
     Result := inherited EventFilter(Sender, Event);
@@ -6718,12 +6718,9 @@ end;
 function TQtMainWindow.getClientBounds: TRect;
 begin
   {$IFDEF QTSCROLLABLEFORMS}
-  if Assigned(ScrollArea) and
-    {forms which have parent eg.docked must always provide
-     ScrollArea clientRect, while others provide such info
-     only when they are mapped.}
-    (testAttribute(QtWA_Mapped) or (LCLObject.Parent <> nil)) then
-      Result := ScrollArea.getClientBounds
+  if Assigned(ScrollArea) and not
+    ScrollArea.testAttribute(QtWA_PendingResizeEvent) then
+    Result := ScrollArea.getClientBounds
   else
   {$ENDIF}
   Result:=inherited getClientBounds;

@@ -3415,6 +3415,8 @@ begin
     Result:=CheckIfPackageNeedsCompilation(APackage,
                           pcfSkipDesignTimePackages in Flags,
                           NeedBuildAllFlag,Note);
+    if Note<>'' then
+      Note:='Compile reason: '+Note;
     if (pcfOnlyIfNeeded in Flags) then begin
       if Result=mrNo then begin
         //DebugLn(['TLazPackageGraph.CompilePackage ',APackage.IDAsString,' does not need compilation.']);
@@ -3481,8 +3483,8 @@ begin
 
       // run compilation tool 'Before'
       if not (pcfDoNotCompilePackage in Flags) then begin
-        Result:=APackage.CompilerOptions.ExecuteBefore.Execute(
-                                 APackage.Directory,'Executing command before');
+        Result:=APackage.CompilerOptions.ExecuteBefore.Execute(APackage.Directory,
+          'Package '+APackage.IDAsString+': '+lisExecutingCommandBefore,Note);
         if Result<>mrOk then begin
           DebugLn(['TLazPackageGraph.CompilePackage ExecuteBefore failed: ',APackage.IDAsString]);
           exit;
@@ -3522,8 +3524,9 @@ begin
         {$IFDEF EnableNewExtTools}
         PkgCompileTool:=ExternalToolList.Add(Format(lisPkgMangCompilingPackage, [APackage.IDAsString]));
         FPCParser:=TFPCParser(PkgCompileTool.AddParsers(SubToolFPC));
+        //debugln(['TLazPackageGraph.CompilePackage ',APackage.Name,' ',APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc,' ',APackage.MainUnit.Filename]);
         if (APackage.MainUnit<>nil)
-        and (APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc) then
+        and (not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc) then
           FPCParser.FilesToIgnoreUnitNotUsed.Add(APackage.MainUnit.Filename);
         FPCParser.HideHintsSenderNotUsed:=not APackage.CompilerOptions.ShowHintsForSenderNotUsed;
         FPCParser.HideHintsUnitNotUsedInMainSource:=not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
@@ -3531,13 +3534,13 @@ begin
         PkgCompileTool.Process.CurrentDirectory:=APackage.Directory;
         PkgCompileTool.Process.Executable:=CompilerFilename;
         PkgCompileTool.CmdLineParams:=EffectiveCompilerParams;
-        PkgCompileTool.Execute;
-        PkgCompileTool.WaitForExit;
-        if Note<>'' then
-          PkgCompileTool.Hint:='Compile reason: '+Note;
+        PkgCompileTool.Hint:=Note;
         PkgCompileTool.Data:=TIDEExternalToolData.Create(IDEToolCompilePackage,
           APackage.Name,APackage.Filename);
         PkgCompileTool.FreeData:=true;
+        // run
+        PkgCompileTool.Execute;
+        PkgCompileTool.WaitForExit;
 
         // check if main ppu file was created
         SrcPPUFile:=APackage.GetSrcPPUFilename;
@@ -3608,8 +3611,8 @@ begin
 
       // run compilation tool 'After'
       if not (pcfDoNotCompilePackage in Flags) then begin
-        Result:=APackage.CompilerOptions.ExecuteAfter.Execute(
-                                  APackage.Directory,'Executing command after');
+        Result:=APackage.CompilerOptions.ExecuteAfter.Execute(APackage.Directory,
+          'Package '+APackage.IDAsString+': '+lisExecutingCommandAfter,Note);
         if Result<>mrOk then begin
           DebugLn(['TLazPackageGraph.CompilePackage ExecuteAfter failed: ',APackage.IDAsString]);
           {$IFDEF EnableNewExtTools}

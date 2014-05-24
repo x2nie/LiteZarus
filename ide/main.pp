@@ -6962,7 +6962,7 @@ var
   {$ENDIF}
   TargetExeDirectory: String;
   FPCVersion, FPCRelease, FPCPatch: integer;
-  Note: String;
+  aCompileHint: String;
   OldToolStatus: TIDEToolStatus;
 begin
   if (Project1=nil) or (Project1.MainUnitInfo=nil) then begin
@@ -7071,10 +7071,10 @@ begin
     // check if build is needed (only if we will call the compiler)
     // and check if a 'build all' is needed
     NeedBuildAllFlag:=false;
+    aCompileHint:='';
     if (AReason in Project1.CompilerOptions.CompileReasons) then begin
-      Note:='';
       Result:=MainBuildBoss.DoCheckIfProjectNeedsCompilation(Project1,
-                                                         NeedBuildAllFlag,Note);
+                                                 NeedBuildAllFlag,aCompileHint);
       if  (pbfOnlyIfNeeded in Flags)
       and (not (pfAlwaysBuild in Project1.Flags)) then begin
         if Result=mrNo then begin
@@ -7091,6 +7091,8 @@ begin
         end;
       end;
     end;
+    if aCompileHint<>'' then
+      aCompileHint:='Compile Reason: '+aCompileHint;
 
     // create unit output directory
     UnitOutputDirectory:=Project1.CompilerOptions.GetUnitOutPath(false);
@@ -7161,7 +7163,8 @@ begin
                                         Project1.CompilerOptions.ExecuteBefore);
       if (AReason in ToolBefore.CompileReasons) then begin
         Result:=Project1.CompilerOptions.ExecuteBefore.Execute(
-                           Project1.ProjectDirectory,lisExecutingCommandBefore);
+               Project1.ProjectDirectory, lisProject2+lisExecutingCommandBefore,
+               aCompileHint);
         if Result<>mrOk then
         begin
           debugln(['TMainIDE.DoBuildProject CompilerOptions.ExecuteBefore.Execute failed']);
@@ -7190,7 +7193,7 @@ begin
 
         // compile
         CompilerFilename:=Project1.GetCompilerFilename;
-        // Note: use absolute paths, because some external tools resolve symlinked directories
+        // Hint: use absolute paths, because some external tools resolve symlinked directories
         CompilerParams :=
           Project1.CompilerOptions.MakeOptionsString(SrcFilename,[ccloAbsolutePaths])
                  + ' ' + PrepareCmdLineOption(SrcFilename);
@@ -7206,7 +7209,7 @@ begin
                                 WorkingDir,CompilerFilename,CompilerParams,
                                 (pbfCleanCompile in Flags) or NeedBuildAllFlag,
                                 pbfSkipLinking in Flags,
-                                pbfSkipAssembler in Flags);
+                                pbfSkipAssembler in Flags,aCompileHint);
         if Result<>mrOk then begin
           // save state, so that next time the project is not compiled clean
           Project1.LastCompilerFilename:=CompilerFilename;
@@ -7251,7 +7254,8 @@ begin
       // no need to check for mrOk, we are exit if it wasn't
       if (AReason in ToolAfter.CompileReasons) then begin
         Result:=Project1.CompilerOptions.ExecuteAfter.Execute(
-                            Project1.ProjectDirectory,lisExecutingCommandAfter);
+                            Project1.ProjectDirectory,
+                            lisProject2+lisExecutingCommandAfter,aCompileHint);
         if Result<>mrOk then
         begin
           debugln(['TMainIDE.DoBuildProject CompilerOptions.ExecuteAfter.Execute failed']);

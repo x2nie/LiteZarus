@@ -286,7 +286,11 @@ type
                            read FHideHintsUnitNotUsedInMainSource
                            write FHideHintsUnitNotUsedInMainSource default true;
   end;
+  TFPCParserClass = class of TFPCParser;
+var
+  IDEFPCParser: TFPCParserClass = nil;
 
+type
   { TMakeParser - standard parser for 'make' messages, implemented by IDE }
 
   TMakeParser = class(TExtToolParser)
@@ -594,6 +598,7 @@ type
     FCustomMacroFunction: TETMacroFunction;
     FEnvironmentOverrides: TStringList;
     FExecutable: string;
+    FHint: string;
     FQuiet: boolean;
     FResolveMacros: boolean;
     FScanners: TStrings;
@@ -609,6 +614,7 @@ type
     procedure Clear;
 
     property Title: string read fTitle write fTitle;
+    property Hint: string read FHint write FHint;
     property Executable: string read FExecutable write FExecutable;
     property Filename: string read FExecutable write FExecutable; deprecated;
     property CmdLineParams: string read fCmdLineParams write fCmdLineParams;

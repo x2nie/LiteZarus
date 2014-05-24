@@ -33,10 +33,10 @@ interface
 
 uses
   Math, strutils, Classes, SysUtils, UTF8Process, FileProcs, LazFileCache,
-  LazUTF8Classes, LazFileUtils, LazUTF8, AvgLvlTree, SynEdit,
-  LResources, Forms, Buttons, ExtCtrls, Controls, LMessages, LCLType, Graphics,
-  LCLIntf, Themes, ImgList, GraphType, Menus, Clipbrd, Dialogs, StdCtrls,
-  IDEExternToolIntf, IDEImagesIntf, MenuIntf, etSrcEditMarks, etQuickFixes,
+  LazUTF8Classes, LazFileUtils, LazUTF8, AvgLvlTree, SynEdit, LResources, Forms,
+  Buttons, ExtCtrls, Controls, LMessages, LCLType, Graphics, LCLIntf, Themes,
+  ImgList, GraphType, Menus, Clipbrd, Dialogs, StdCtrls, IDEExternToolIntf,
+  IDEImagesIntf, MenuIntf, PackageIntf, etSrcEditMarks, etQuickFixes,
   LazarusIDEStrConsts, EnvironmentOpts;
 
 const
@@ -315,6 +315,7 @@ type
     function GetLineText(Line: TMessageLine): string;
     function GetHeaderText(View: TLMsgWndView): string;
     function FindUnfinishedView: TLMsgWndView; // running or waiting for run
+    function GetLastViewWithContent: TLMsgWndView;
 
     // filter
     property ActiveFilter: TLMsgViewFilter read FActiveFilter write SetActiveFilter;
@@ -408,6 +409,7 @@ type
     procedure MsgCtrlPopupMenuClose(Sender: TObject);
     procedure MsgCtrlPopupMenuPopup(Sender: TObject);
     procedure OnSelectFilterClick(Sender: TObject);
+    procedure OpenToolsOptionsMenuItemClick(Sender: TObject);
     procedure SaveAllToFileMenuItemClick(Sender: TObject);
     procedure SaveShownToFileMenuItemClick(Sender: TObject);
     procedure SearchEditChange(Sender: TObject);
@@ -420,6 +422,7 @@ type
     procedure UnhideMsgTypeClick(Sender: TObject);
   private
     function AllMessagesAsString(const OnlyShown: boolean): String;
+    function GetAboutView: TLMsgWndView;
     function GetViews(Index: integer): TLMsgWndView;
     procedure SaveClicked(OnlyShown: boolean);
     procedure CopyAllClicked(OnlyShown: boolean);
@@ -498,7 +501,9 @@ var
     MsgFileStyleFullMenuItem: TIDEMenuCommand;
   MsgTranslateMenuItem: TIDEMenuCommand;
   MsgShowIDMenuItem: TIDEMenuCommand;
-  MsgAboutToolMenuItem: TIDEMenuCommand;
+  MsgAboutSection: TIDEMenuSection;
+    MsgAboutToolMenuItem: TIDEMenuCommand;
+    MsgOpenToolOptionsMenuItem: TIDEMenuCommand;
 
 procedure RegisterStandardMessagesViewMenuItems;
 
@@ -564,7 +569,12 @@ begin
     MsgFileStyleFullMenuItem:=RegisterIDEMenuCommand(Parent,'Full','Full');
   MsgTranslateMenuItem:=RegisterIDEMenuCommand(Root, 'Translate', 'Translate the English Messages');
   MsgShowIDMenuItem:=RegisterIDEMenuCommand(Root, 'ShowID', 'Show Message Type ID');
-  MsgAboutToolMenuItem:=RegisterIDEMenuCommand(Root, 'About', 'About Tool');
+  MsgAboutSection:=RegisterIDEMenuSection(Root,'About');
+    Parent:=MsgAboutSection;
+    Parent.ChildsAsSubMenu:=true;
+    Parent.Caption:='About ...';
+    MsgAboutToolMenuItem:=RegisterIDEMenuCommand(Parent, 'About', 'About Tool');
+    MsgOpenToolOptionsMenuItem:=RegisterIDEMenuCommand(Parent, 'Open Tool Options', 'Open Tool Options');
 end;
 
 function CompareHideMsgType(HideMsgType1, HideMsgType2: Pointer): integer;
@@ -2599,6 +2609,19 @@ begin
   Result:=nil;
 end;
 
+function TMessagesCtrl.GetLastViewWithContent: TLMsgWndView;
+var
+  i: Integer;
+begin
+  i:=ViewCount-1;
+  while i>=0 do begin
+    Result:=Views[i];
+    if Result.HasContent then exit;
+    dec(i);
+  end;
+  Result:=nil;
+end;
+
 function TMessagesCtrl.GetFilter(aCaption: string; CreateIfNotExist: boolean
   ): TLMsgViewFilter;
 var
@@ -3008,6 +3031,8 @@ var
   MsgType: String;
   CanHideMsgType: Boolean;
   MinUrgency: TMessageLineUrgency;
+  ToolData: TIDEExternalToolData;
+  ToolOptionsCaption: String;
 begin
   MessagesMenuRoot.MenuItem:=MsgCtrlPopupMenu.Items;
   MessagesMenuRoot.BeginUpdate;
@@ -3045,13 +3070,26 @@ begin
           CanHideMsgType:=ord(Line.Urgency)<ord(mluError);
         end;
       end;
-
+    end else begin
+      // no line selected => use last visible View
+      View:=MessagesCtrl.GetLastViewWithContent;
+    end;
+    ToolOptionsCaption:='';
+    if View<>nil then
+    begin
       MsgAboutToolMenuItem.Caption:='About '+View.Caption;
       MsgAboutToolMenuItem.Visible:=true;
-    end else begin
+      if View.Tool.Data is TIDEExternalToolData then begin
+        ToolData:=TIDEExternalToolData(View.Tool.Data);
+        if ToolData.Kind=IDEToolCompilePackage then
+          ToolOptionsCaption:='Open Package '+ToolData.ModuleName;
+      end;
+    end else
       MsgAboutToolMenuItem.Visible:=false;
-    end;
     MsgAboutToolMenuItem.OnClick:=@AboutToolMenuItemClick;
+    MsgOpenToolOptionsMenuItem.Visible:=ToolOptionsCaption<>'';
+    MsgOpenToolOptionsMenuItem.Caption:=ToolOptionsCaption;
+    MsgOpenToolOptionsMenuItem.OnClick:=@OpenToolsOptionsMenuItemClick;
 
     if CanHideMsgType then begin
       MsgHideMsgOfTypeMenuItem.Caption:='Hide all messages of type '+MsgType;
@@ -3119,6 +3157,21 @@ begin
   Filter:=MessagesCtrl.GetFilter(Item.Caption,false);
   if Filter=nil then exit;
   MessagesCtrl.ActiveFilter:=Filter;
+end;
+
+procedure TMessagesFrame.OpenToolsOptionsMenuItemClick(Sender: TObject);
+var
+  View: TLMsgWndView;
+  ToolData: TIDEExternalToolData;
+begin
+  View:=GetAboutView;
+  if View=nil then exit;
+  if not (View.Tool.Data is TIDEExternalToolData) then exit;
+  ToolData:=TIDEExternalToolData(View.Tool.Data);
+  if ToolData.Kind=IDEToolCompilePackage then begin
+    PackageEditingInterface.DoOpenPackageFile(ToolData.Filename,
+                                              [pofAddToRecent],false);
+  end;
 end;
 
 procedure TMessagesFrame.SaveAllToFileMenuItemClick(Sender: TObject);
@@ -3221,6 +3274,13 @@ begin
   Result:=s;
 end;
 
+function TMessagesFrame.GetAboutView: TLMsgWndView;
+begin
+  Result:=MessagesCtrl.SelectedView;
+  if Result=nil then
+    Result:=MessagesCtrl.GetLastViewWithContent;
+end;
+
 procedure TMessagesFrame.CopyMsgMenuItemClick(Sender: TObject);
 begin
   CopyMsgToClipboard(false);
@@ -3313,9 +3373,8 @@ var
   Proc: TProcessUTF8;
   Memo: TMemo;
 begin
-  View:=MessagesCtrl.SelectedView;
+  View:=GetAboutView;
   if View=nil then exit;
-
   s:=View.Caption+LineEnding;
   s+=LineEnding;
   Tool:=View.Tool;
@@ -3346,6 +3405,8 @@ begin
   try
     with Form do begin
       Name:='AboutExtToolDlg';
+      Width:=500;
+      Height:=300;
       Position:=poMainFormCenter;
       Caption:='About '+View.Caption;
     end;

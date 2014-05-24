@@ -65,7 +65,8 @@ type
     destructor Destroy; override;
     function Compile(AProject: TProject;
                      const WorkingDir, CompilerFilename, CompilerParams: string;
-                     BuildAll, SkipLinking, SkipAssembler: boolean
+                     BuildAll, SkipLinking, SkipAssembler: boolean;
+                     const aCompileHint: string
                     ): TModalResult;
     procedure WriteError(const Msg: string);
     {$IFNDEF EnableNewExtTools}
@@ -269,10 +270,9 @@ end;
 {------------------------------------------------------------------------------
   TCompiler Compile
 ------------------------------------------------------------------------------}
-function TCompiler.Compile(AProject: TProject;
-  const WorkingDir, CompilerFilename, CompilerParams: string;
-  BuildAll, SkipLinking, SkipAssembler: boolean
-  ): TModalResult;
+function TCompiler.Compile(AProject: TProject; const WorkingDir,
+  CompilerFilename, CompilerParams: string; BuildAll, SkipLinking,
+  SkipAssembler: boolean; const aCompileHint: string): TModalResult;
 var
   CmdLine : String;
   Abort : Boolean;
@@ -322,13 +322,14 @@ begin
 
   {$IFDEF EnableNewExtTools}
   Tool:=ExternalToolList.Add('Compile Project');
+  Tool.Hint:=aCompileHint;
   Tool.Process.Executable:=CompilerFilename;
   Tool.CmdLineParams:=CmdLine;
   Tool.Process.CurrentDirectory:=WorkingDir;
   FPCParser:=TFPCParser(Tool.AddParsers(SubToolFPC));
   FPCParser.HideHintsSenderNotUsed:=not AProject.CompilerOptions.ShowHintsForSenderNotUsed;
   FPCParser.HideHintsUnitNotUsedInMainSource:=not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
-  if AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc
+  if (not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc)
   and (AProject.MainFilename<>'') then
     FPCParser.FilesToIgnoreUnitNotUsed.Add(AProject.MainFilename);
   Tool.AddParsers(SubToolMake);
