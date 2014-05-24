@@ -4094,7 +4094,7 @@ begin
     OnDblClick := @ComponentTreeDblClick;
     OnKeyDown := @ComponentTreeKeyDown;
     OnSelectionChanged := @ComponentTreeSelectionChanged;
-    OnNodeGetImageIndex := @OnVTNodeGetImageIndex;
+    OnComponentGetImageIndex := @OnVTNodeGetImageIndex;
     OnModified := @DoModified;
     Scrollbars := ssAutoBoth;
     PopupMenu := MainPopupMenu;
