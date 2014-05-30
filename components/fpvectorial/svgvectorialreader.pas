@@ -79,7 +79,7 @@ type
     function DebugOutTokensAsString: string;
   end;
 
-  TSVGCoordinateKind = (sckUnknown, sckX, sckY, sckYDelta);
+  TSVGCoordinateKind = (sckUnknown, sckX, sckY, sckXDelta, sckYDelta, sckXSize, sckYSize);
 
   TSVGUnit = (suPX, suMM);
 
@@ -135,10 +135,16 @@ type
     function  StringFloatZeroToOneToWord(AStr: string): Word;
     procedure ConvertSVGCoordinatesToFPVCoordinates(
       const AData: TvVectorialPage;
-      const ASrcX, ASrcY: Double; var ADestX, ADestY: Double);
+      const ASrcX, ASrcY: Double; var ADestX, ADestY: Double;
+      ADoViewBoxAdjust: Boolean = True);
     procedure ConvertSVGDeltaToFPVDelta(
       const AData: TvVectorialPage;
-      const ASrcX, ASrcY: Double; var ADestX, ADestY: Double);
+      const ASrcX, ASrcY: Double; var ADestX, ADestY: Double;
+      ADoViewBoxAdjust: Boolean = True);
+    procedure ConvertSVGSizeToFPVSize(
+      const AData: TvVectorialPage;
+      const ASrcX, ASrcY: Double; var ADestX, ADestY: Double;
+      ADoViewBoxAdjust: Boolean = True);
     procedure AutoDetectDocSize(var ALeft, ATop, ARight, ABottom: Double; ABaseNode: TDOMNode);
     function SVGColorValueStrToWord(AStr: string): Word;
   public
@@ -900,7 +906,7 @@ begin
   end
   else if AKey = 'stroke-width' then
   begin
-    ADestEntity.Pen.Width := Round(StringWithUnitToFloat(AValue, sckX));
+    ADestEntity.Pen.Width := Round(StringWithUnitToFloat(AValue, sckXSize));
     Result := Result + [spbfPenWidth];
   end
   else if AKey = 'stroke-opacity' then
@@ -976,8 +982,8 @@ begin
   end
   else if AKey = 'font-size' then
   begin
-    if ADestEntity <> nil then ADestEntity.Font.Size := Round(StringWithUnitToFloat(AValue, sckX, suPX));
-    if ADestStyle <> nil then ADestStyle.Font.Size := Round(StringWithUnitToFloat(AValue, sckX, suPX));
+    if ADestEntity <> nil then ADestEntity.Font.Size := Round(StringWithUnitToFloat(AValue, sckXSize, suPX));
+    if ADestStyle <> nil then ADestStyle.Font.Size := Round(StringWithUnitToFloat(AValue, sckXSize, suPX));
     Result := Result + [spbfFontSize];
   end
   else if AKey = 'font-family' then
@@ -2385,9 +2391,9 @@ begin
 
   ConvertSVGCoordinatesToFPVCoordinates(
         AData, lx, ly, lRect.X, lRect.Y);
-  ConvertSVGDeltaToFPVDelta(
+  ConvertSVGSizeToFPVSize(
         AData, cx, cy, lRect.CX, lRect.CY);
-  ConvertSVGDeltaToFPVDelta(
+  ConvertSVGSizeToFPVSize(
         AData, lrx, lry, lRect.RX, lRect.RY);
   lRect.RX := Abs(lRect.RX) * 2;
   lRect.RY := Abs(lRect.RY) * 2;
@@ -2504,7 +2510,7 @@ var
           if lNodeName = 'x' then
           begin
             lCurStyle.PositionSet := True;
-            lCurStyle.X := StringWithUnitToFloat(lNodeValue, sckX);
+            lCurStyle.X := StringWithUnitToFloat(lNodeValue, sckX) - lParagraph.X;
           end
           else if lNodeName = 'y' then
           begin
@@ -2584,13 +2590,14 @@ begin
     end;
   end;
 
-  // Recover the position if there was a transformation matrix
+  // Takes into account a possible transformation matrix
   lx := lx + lParagraph.X;
   ly := ly + lParagraph.Y;
 
-  // Set the coordinates
-  ConvertSVGCoordinatesToFPVCoordinates(
-        AData, lx, ly, lParagraph.X, lParagraph.Y);
+  // Set the coordinates -> Don't use ConvertSVGCoordinatesToFPVCoordinates
+  // because StringWithUnitToFloat(..sckX..) already makes all conversions necessary
+  lParagraph.X := lx;
+  lParagraph.Y := ly;
 
   // Now add other lines, which appear as <tspan ...>another line</tspan>
   // Example:
@@ -2637,7 +2644,7 @@ begin
     else if lNodeName = 'x' then
       lx := StringWithUnitToFloat(lNodeValue, sckX)
     else if lNodeName = 'y' then
-      ly := StringWithUnitToFloat(lNodeValue, sckYDelta);
+      ly := StringWithUnitToFloat(lNodeValue, sckY);
   end;
 
   if lXLink = '' then Exit; // nothing to insert, so give up
@@ -2681,6 +2688,24 @@ var
   UnitStr, ValueStr: string;
   Len: Integer;
   LastChar: Char;
+  ViewPortApplied: Boolean = False;
+
+  procedure DoViewBoxAdjust();
+  begin
+    if ViewBoxAdjustment then
+    begin
+      case ACoordKind of
+        sckX:      Result := (Result - ViewBox_Left) * Page_Width / ViewBox_Width;
+        sckXDelta,
+        sckXSize:  Result := Result * Page_Width / ViewBox_Width;
+        sckY:      Result := Page_Height - (Result - ViewBox_Top) * Page_Height / ViewBox_Height;
+        sckYDelta: Result := - (Result - ViewBox_Top) * Page_Height / ViewBox_Height;
+        sckYSize:  Result := Result * Page_Height / ViewBox_Height;
+      end;
+      ViewPortApplied := True;
+    end;
+  end;
+
 begin
   if AStr = '' then Exit(0.0);
 
@@ -2702,12 +2727,7 @@ begin
   begin
     ValueStr := Copy(AStr, 1, Len-2);
     Result := StrToFloat(ValueStr, FPointSeparator);
-    if ViewBoxAdjustment and (ACoordKind = sckX) then
-      Result := (Result - ViewBox_Left) * Page_Width / ViewBox_Width;
-    if ViewBoxAdjustment and (ACoordKind = sckY) then
-      Result := Page_Height - (Result - ViewBox_Top) * Page_Height / ViewBox_Height;
-    if ViewBoxAdjustment and (ACoordKind = sckYDelta) then
-      Result := - (Result - ViewBox_Top) * Page_Height / ViewBox_Height;
+    DoViewBoxAdjust();
   end
   else if LastChar = '%' then
   begin
@@ -2726,13 +2746,11 @@ begin
   else // If there is no unit, just use StrToFloat
   begin
     Result := StrToFloat(AStr, FPointSeparator);
-    if ViewBoxAdjustment and (ACoordKind = sckX) then
-      Result := (Result - ViewBox_Left) * Page_Width / ViewBox_Width;
-    if ViewBoxAdjustment and (ACoordKind = sckY) then
-      Result := Page_Height - (Result - ViewBox_Top) * Page_Height / ViewBox_Height;
-    if ViewBoxAdjustment and (ACoordKind = sckYDelta) then
-      Result := - (Result - ViewBox_Top) * Page_Height / ViewBox_Height;
+    DoViewBoxAdjust();
   end;
+  // Finish the adjustment for some cases where this is substituting ConvertSVGCoordinatesToFPVCoordinates
+  if (not ViewPortApplied) and (ACoordKind = sckY) then
+    Result := Page_Height - Result;
 end;
 
 function TvSVGVectorialReader.StringFloatZeroToOneToWord(AStr: string): Word;
@@ -2742,27 +2760,40 @@ end;
 
 procedure TvSVGVectorialReader.ConvertSVGCoordinatesToFPVCoordinates(
   const AData: TvVectorialPage; const ASrcX, ASrcY: Double;
-  var ADestX,ADestY: Double);
+  var ADestX,ADestY: Double; ADoViewBoxAdjust: Boolean = True);
 begin
   ADestX := ASrcX * FLOAT_MILIMETERS_PER_PIXEL;
   ADestY := AData.Height - ASrcY * FLOAT_MILIMETERS_PER_PIXEL;
-  if ViewBoxAdjustment then
+  if ViewBoxAdjustment and ADoViewBoxAdjust then
   begin
-    ADestX := ASrcX * Page_Width / ViewBox_Width;
-    ADestY := AData.Height - ASrcY * Page_Height / ViewBox_Height;
+    ADestX := (ASrcX - ViewBox_Left) * Page_Width / ViewBox_Width;
+    ADestY := AData.Height - (ASrcY - ViewBox_Top) * Page_Height / ViewBox_Height;
   end;
 end;
 
 procedure TvSVGVectorialReader.ConvertSVGDeltaToFPVDelta(
   const AData: TvVectorialPage; const ASrcX, ASrcY: Double; var ADestX,
-  ADestY: Double);
+  ADestY: Double; ADoViewBoxAdjust: Boolean = True);
 begin
   ADestX := ASrcX * FLOAT_MILIMETERS_PER_PIXEL;
   ADestY := - ASrcY * FLOAT_MILIMETERS_PER_PIXEL;
-  if ViewBoxAdjustment then
+  if ViewBoxAdjustment and ADoViewBoxAdjust then
   begin
     ADestX := ASrcX * Page_Width / ViewBox_Width;
     ADestY := - ASrcY * Page_Height / ViewBox_Height;
+  end;
+end;
+
+procedure TvSVGVectorialReader.ConvertSVGSizeToFPVSize(
+  const AData: TvVectorialPage; const ASrcX, ASrcY: Double; var ADestX,
+  ADestY: Double; ADoViewBoxAdjust: Boolean = True);
+begin
+  ADestX := ASrcX * FLOAT_MILIMETERS_PER_PIXEL;
+  ADestY := ASrcY * FLOAT_MILIMETERS_PER_PIXEL;
+  if ViewBoxAdjustment and ADoViewBoxAdjust then
+  begin
+    ADestX := ASrcX * Page_Width / ViewBox_Width;
+    ADestY := ASrcY * Page_Height / ViewBox_Height;
   end;
 end;
 
@@ -2964,6 +2995,11 @@ begin
     AData.Width := lx2 - lx;
     AData.Height := ly2 - ly;
   end;
+
+  // Make sure the latest page size is syncronized with auto-detected
+  // or ViewBox-only obtained size
+  Page_Width := AData.Width;
+  Page_Height := AData.Height;
 
   // ----------------
   // Now process the elements

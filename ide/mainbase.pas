@@ -467,6 +467,7 @@ end;
 procedure TMainIDEBase.DoMergeDefaultProjectOptions(AProject: TProject);
 var
   AFilename: String;
+  ShortFilename: String;
 begin
   // load default project options if exists
   AFilename:=AppendPathDelim(GetPrimaryConfigPath)+DefaultProjectOptionsFilename;
@@ -485,15 +486,20 @@ begin
     if AProject.CompilerOptions.LoadFromFile(AFilename)<>mrOk then
       DebugLn(['TMainIDEBase.DoLoadDefaultCompilerOptions failed']);
   end;
+
   // change target file name
   AFilename:=ExtractFileName(AProject.CompilerOptions.TargetFilename);
   if AFilename='' then
     exit; // using default -> ok
   if CompareFilenames(AFilename,ExtractFilename(AProject.ProjectInfoFile))=0
   then exit; // target file name and project name fit -> ok
+
   // change target file to project name
-  AProject.CompilerOptions.TargetFilename:=ExtractFilePath(AProject.CompilerOptions.TargetFilename)
-    +ExtractFileNameOnly(AProject.ProjectInfoFile)+ExtractFileExt(AFilename);
+  ShortFilename:=ExtractFileNameOnly(AProject.ProjectInfoFile);
+  if ShortFilename<>'' then
+    AProject.CompilerOptions.TargetFilename:=
+      ExtractFilePath(AProject.CompilerOptions.TargetFilename)
+        +ShortFilename+ExtractFileExt(AFilename);
   AProject.CompilerOptions.Modified:=false;
 end;
 
@@ -853,9 +859,13 @@ begin
     SubParentMI:=itmSourceInsertGeneral;
       // insert general text sub menu items
       CreateMenuItem(SubParentMI,itmSourceInsertGPLNotice,'itmSourceInsertGPLNotice',lisMenuInsertGPLNotice);
+      CreateMenuItem(SubParentMI,itmSourceInsertGPLNoticeTranslated,'itmSourceInsertGPLNoticeTranslated',lisMenuInsertGPLNoticeTranslated);
       CreateMenuItem(SubParentMI,itmSourceInsertLGPLNotice,'itmSourceInsertLGPLNotice',lisMenuInsertLGPLNotice);
+      CreateMenuItem(SubParentMI,itmSourceInsertLGPLNoticeTranslated,'itmSourceInsertLGPLNoticeTranslated',lisMenuInsertLGPLNoticeTranslated);
       CreateMenuItem(SubParentMI,itmSourceInsertModifiedLGPLNotice,'itmSourceInsertModifiedLGPLNotice',lisMenuInsertModifiedLGPLNotice);
+      CreateMenuItem(SubParentMI,itmSourceInsertModifiedLGPLNoticeTranslated,'itmSourceInsertModifiedLGPLNoticeTranslated',lisMenuInsertModifiedLGPLNoticeTranslated);
       CreateMenuItem(SubParentMI,itmSourceInsertMITNotice,'itmSourceInsertMITNotice',lisMenuInsertMITNotice);
+      CreateMenuItem(SubParentMI,itmSourceInsertMITNoticeTranslated,'itmSourceInsertMITNoticeTranslated',lisMenuInsertMITNoticeTranslated);
       CreateMenuItem(SubParentMI,itmSourceInsertUsername,'itmSourceInsertUsername',lisMenuInsertUsername);
       CreateMenuItem(SubParentMI,itmSourceInsertDateTime,'itmSourceInsertDateTime',lisMenuInsertDateTime);
       CreateMenuItem(SubParentMI,itmSourceInsertChangeLogEntry,'itmSourceInsertChangeLogEntry',lisMenuInsertChangeLogEntry);
@@ -1196,9 +1206,13 @@ begin
     itmSourceInsertCVSSource.Command:=GetCommand(ecInsertCVSSource);
 
     itmSourceInsertGPLNotice.Command:=GetCommand(ecInsertGPLNotice);
+    itmSourceInsertGPLNoticeTranslated.Command:=GetCommand(ecInsertGPLNoticeTranslated);
     itmSourceInsertLGPLNotice.Command:=GetCommand(ecInsertLGPLNotice);
+    itmSourceInsertLGPLNoticeTranslated.Command:=GetCommand(ecInsertLGPLNoticeTranslated);
     itmSourceInsertModifiedLGPLNotice.Command:=GetCommand(ecInsertModifiedLGPLNotice);
+    itmSourceInsertModifiedLGPLNoticeTranslated.Command:=GetCommand(ecInsertModifiedLGPLNoticeTranslated);
     itmSourceInsertMITNotice.Command:=GetCommand(ecInsertMITNotice);
+    itmSourceInsertMITNoticeTranslated.Command:=GetCommand(ecInsertMITNoticeTranslated);
     itmSourceInsertUsername.Command:=GetCommand(ecInsertUserName);
     itmSourceInsertDateTime.Command:=GetCommand(ecInsertDateTime);
     itmSourceInsertChangeLogEntry.Command:=GetCommand(ecInsertChangeLogEntry);

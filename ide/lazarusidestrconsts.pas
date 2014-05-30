@@ -303,9 +303,13 @@ resourcestring
   lisSourcePaths = 'Source paths';
 
   lisMenuInsertGPLNotice = 'GPL Notice';
+  lisMenuInsertGPLNoticeTranslated = 'translated GPL Notice';
   lisMenuInsertLGPLNotice = 'LGPL Notice';
+  lisMenuInsertLGPLNoticeTranslated = 'translated LGPL Notice';
   lisMenuInsertModifiedLGPLNotice = 'Modified LGPL Notice';
+  lisMenuInsertModifiedLGPLNoticeTranslated = 'translated Modified LGPL Notice';
   lisMenuInsertMITNotice = 'MIT Notice';
+  lisMenuInsertMITNoticeTranslated = 'translated MIT Notice';
   lisMenuInsertUserName = 'Current Username';
   lisMenuInsertDateTime = 'Current Date and Time';
   lisMenuInsertChangeLogEntry = 'ChangeLog Entry';
@@ -1090,6 +1094,7 @@ resourcestring
   dlgIDEOptions = 'IDE Options';
   dlgBakNoSubDirectory = '(no subdirectory)';
   dlgEOFocusMessagesAfterCompilation = 'Focus messages after compilation';
+  lisMessagesWindow = 'Messages Window';
   lisCheckForDiskFileChangesViaContentRatherThanTimesta = 'Check for disk file'
     +' changes via content rather than timestamp';
   
@@ -1219,7 +1224,10 @@ resourcestring
   dlgFpcPath = 'Compiler path (e.g. %s)';
   dlgFpcSrcPath = 'FPC source directory';
   dlgMakePath = 'Make path';
-  dlgCompilerMessages = 'Compiler messages language file';
+  dlgCompilerMessages = 'Compiler messages language file (*.msg)';
+  lisSetThisToTranslateTheCompilerMessagesToAnotherLang = 'Set this to '
+    +'translate the compiler messages to another language (i.e. not English). '
+    +'For example: German: $(FPCSrcDir)/compiler/msg/errordu.msg.';
   dlgDebugType = 'Debugger type and path';
   dlgTestPrjDir = 'Directory for building test projects';
   dlgQShowGrid = 'Show grid';
@@ -1620,6 +1628,8 @@ resourcestring
   dlgUseSchemeLocal    = 'Use local scheme settings';
   dlgColor = 'Color';
   dlgColors = 'Colors';
+  lisSetAllColors = 'Set all colors:';
+  lisLazarusDefault = 'Lazarus Default';
   dlgColorNotModified = 'Not modified';
   dlgPriorities = 'Priorities';
 
@@ -2108,6 +2118,7 @@ resourcestring
   dlgCCOTestMissingPPU = 'Test: Checking missing fpc ppu ...';
   dlgCCOTestCompilerDate = 'Test: Checking compiler date ...';
   lisCCOErrorCaption = 'Error';
+  lisCompilerMessagesFileNotFound = 'Compiler messages file not found:%s%s';
   lisUnableToOpen = 'Unable to open "%s"';
   lisCompilerDoesNotSupportTarget = 'Compiler "%s" does not support target %s-%s';
   lisInvalidMode = 'Invalid mode %s';
@@ -2718,9 +2729,13 @@ resourcestring
   srkmecSelectionTabs2Spaces     = 'Convert tabs to spaces in selection';
   srkmecInsertCharacter          = 'Insert from Charactermap';
   srkmecInsertGPLNotice          = 'Insert GPL notice';
+  srkmecInsertGPLNoticeTranslated = 'Insert GPL notice translated';
   srkmecInsertLGPLNotice         = 'Insert LGPL notice';
+  srkmecInsertLGPLNoticeTranlated = 'Insert LGPL notice translated';
   srkmecInsertModifiedLGPLNotice = 'Insert modified LGPL notice';
+  srkmecInsertModifiedLGPLNoticeTranslated = 'Insert modified LGPL notice translated';
   srkmecInsertMITNotice          = 'Insert MIT notice';
+  srkmecInsertMITNoticeTranslated = 'Insert MIT notice translated';
   lisKMInsertUsername            = 'Insert username';
   lisKMInsertDateAndTime         = 'Insert date and time';
   srkmecInsertUserName           = 'Insert current username';

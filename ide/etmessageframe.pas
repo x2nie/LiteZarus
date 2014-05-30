@@ -36,8 +36,8 @@ uses
   LazUTF8Classes, LazFileUtils, LazUTF8, AvgLvlTree, SynEdit, LResources, Forms,
   Buttons, ExtCtrls, Controls, LMessages, LCLType, Graphics, LCLIntf, Themes,
   ImgList, GraphType, Menus, Clipbrd, Dialogs, StdCtrls, IDEExternToolIntf,
-  IDEImagesIntf, MenuIntf, PackageIntf, etSrcEditMarks, etQuickFixes,
-  LazarusIDEStrConsts, EnvironmentOpts;
+  IDEImagesIntf, MenuIntf, PackageIntf, IDECommands, etSrcEditMarks,
+  etQuickFixes, LazarusIDEStrConsts, EnvironmentOpts, HelpFPCMessages;
 
 const
   CustomViewCaption = '------------------------------';
@@ -103,13 +103,6 @@ type
   end;
 
 
-const
-  MCDefaultBackground = clWindow;
-  MCDefaultHeaderBackgroundRunning = TColor($F0F080);
-  MCDefaultHeaderBackgroundSuccess = TColor($A0F0A0);
-  MCDefaultHeaderBackgroundFailed = TColor($A0A0F0);
-  MCDefaultAutoHeaderBackground = TColor($FFC0A0);
-
 type
   TMessagesCtrl = class;
 
@@ -144,7 +137,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function LineFits(Line: TMessageLine): boolean; override;
+    function LineFits(Line: TMessageLine): boolean; override; // (worker thread)
     property Control: TMessagesCtrl read FControl;
     function HasContent: boolean;
     function GetShownLineCount(WithHeader, WithProgressLine: boolean): integer;
@@ -182,6 +175,7 @@ type
     property Color: TColor read FColor write SetColor default clDefault;
   end;
 
+type
   TOnOpenMessageLine = function(Sender: TObject; Msg: TMessageLine): boolean of object;
 
   TMsgCtrlState = (
@@ -194,8 +188,8 @@ type
     mcoShowStats, // show numbers of errors, warnings and hints in view header line
     mcoShowTranslated, // show translation (e.g. messages from German message file)
     mcoShowMessageID,  // show message ID
-    mcoAutoOpenFirstError, // when all views stopped, open first error
-    mcoShowMsgIcons
+    mcoShowMsgIcons,
+    mcoAutoOpenFirstError // when all views stopped, open first error
     );
   TMsgCtrlOptions = set of TMsgCtrlOption;
 const
@@ -204,13 +198,6 @@ const
 
 type
 
-  TMsgCtrlFileNameStyle = (
-    mcfsShort,   // = ExtractFilename
-    mcfsRelative, // = CreateRelativePath
-    mcfsFull
-    );
-  TMsgCtrlFileNameStyles = set of TMsgCtrlFileNameStyle;
-
   { TMessagesCtrl }
 
   TMessagesCtrl = class(TCustomControl)
@@ -218,7 +205,7 @@ type
     FActiveFilter: TLMsgViewFilter;
     FAutoScrollToNewMessage: boolean;
     FBackgroundColor: TColor;
-    FFilenameStyle: TMsgCtrlFileNameStyle;
+    FFilenameStyle: TMsgWndFileNameStyle;
     FFilters: TFPList; // list of TLMsgViewFilter
     FHeaderBackground: array[TLMVToolState] of TColor;
     FIdleConnected: boolean;
@@ -251,7 +238,7 @@ type
     procedure OnViewChanged(Sender: TObject); // (main thread)
     procedure MsgUpdateTimerTimer(Sender: TObject);
     procedure SetBackgroundColor(AValue: TColor);
-    procedure SetFilenameStyle(AValue: TMsgCtrlFileNameStyle);
+    procedure SetFilenameStyle(AValue: TMsgWndFileNameStyle);
     procedure SetActiveFilter(AValue: TLMsgViewFilter);
     procedure SetHeaderBackground(aToolState: TLMVToolState; AValue: TColor);
     procedure SetIdleConnected(AValue: boolean);
@@ -303,6 +290,7 @@ type
     procedure BeginUpdate;
     procedure EndUpdate;
     procedure EraseBackground({%H-}DC: HDC); override;
+    procedure ApplyEnvironmentOptions;
 
     // views
     function ViewCount: integer; inline;
@@ -356,7 +344,8 @@ type
     function ScrollLeftMax: integer;
     function ScrollTopMax: integer;
     procedure StoreSelectedAsSearchStart;
-    property AutoScrollToNewMessage: boolean read FAutoScrollToNewMessage write FAutoScrollToNewMessage;
+    property AutoScrollToNewMessage: boolean read FAutoScrollToNewMessage
+      write FAutoScrollToNewMessage; // activated when user scrolled to bottom, not an option
 
     // file
     function OpenSelection: boolean;
@@ -364,23 +353,23 @@ type
     function ApplySrcChanges(Changes: TETSrcChanges): boolean; // true if something changed
   public
     // properties
-    property ItemHeight: integer read FItemHeight write SetItemHeight;
+    property AutoHeaderBackground: TColor read FAutoHeaderBackground write SetAutoHeaderBackground default MsgWndDefAutoHeaderBackground;
+    property BackgroundColor: TColor read FBackgroundColor write SetBackgroundColor default MsgWndDefBackgroundColor;
     property Color default clWindow;
-    property SelectedView: TLMsgWndView read FSelectedView write SetSelectedView;
-    property SelectedLine: integer read GetSelectedLine write SetSelectedLine; // -1=header line
-    property BackgroundColor: TColor read FBackgroundColor write SetBackgroundColor default MCDefaultBackground;
+    property FilenameStyle: TMsgWndFileNameStyle read FFilenameStyle write SetFilenameStyle;
     property HeaderBackground[aToolState: TLMVToolState]: TColor read GetHeaderBackground write SetHeaderBackground;
-    property AutoHeaderBackground: TColor read FAutoHeaderBackground write SetAutoHeaderBackground default MCDefaultAutoHeaderBackground;
-    property Images: TCustomImageList read FImages write SetImages;
-    property UrgencyStyles[Urgency: TMessageLineUrgency]: TMsgCtrlUrgencyStyle read GetUrgencyStyles write SetUrgencyStyles;
-    property SearchText: string read FSearchText write SetSearchText;
     property IdleConnected: boolean read FIdleConnected write SetIdleConnected;
-    property Options: TMsgCtrlOptions read FOptions write SetOptions default MCDefaultOptions;
-    property FilenameStyle: TMsgCtrlFileNameStyle read FFilenameStyle write SetFilenameStyle;
-    property SourceMarks: TETMarks read FSourceMarks write SetSourceMarks;
-    property ShowHint default true;
+    property Images: TCustomImageList read FImages write SetImages;
+    property ItemHeight: integer read FItemHeight write SetItemHeight;
     property OnAllViewsStopped: TNotifyEvent read FOnAllViewsStopped write FOnAllViewsStopped;
     property OnOpenMessage: TOnOpenMessageLine read FOnOpenMessage write FOnOpenMessage;
+    property Options: TMsgCtrlOptions read FOptions write SetOptions default MCDefaultOptions;
+    property SearchText: string read FSearchText write SetSearchText;
+    property SelectedLine: integer read GetSelectedLine write SetSelectedLine; // -1=header line
+    property SelectedView: TLMsgWndView read FSelectedView write SetSelectedView;
+    property ShowHint default true;
+    property SourceMarks: TETMarks read FSourceMarks write SetSourceMarks;
+    property UrgencyStyles[Urgency: TMessageLineUrgency]: TMsgCtrlUrgencyStyle read GetUrgencyStyles write SetUrgencyStyles;
   end;
 
   { TMessagesFrame }
@@ -400,8 +389,10 @@ type
     procedure CopyFilenameMenuItemClick(Sender: TObject);
     procedure CopyMsgMenuItemClick(Sender: TObject);
     procedure CopyShownMenuItemClick(Sender: TObject);
+    procedure EditHelpMenuItemClick(Sender: TObject);
     procedure FileStyleMenuItemClick(Sender: TObject);
     procedure FindMenuItemClick(Sender: TObject);
+    procedure HelpMenuItemClick(Sender: TObject);
     procedure HideHintsWithoutPosMenuItemClick(Sender: TObject);
     procedure HideMsgOfTypeMenuItemClick(Sender: TObject);
     procedure HideUrgencyMenuItemClick(Sender: TObject);
@@ -471,7 +462,9 @@ const
 var
   MsgFindMenuItem: TIDEMenuCommand;
   MsgQuickFixMenuSection: TIDEMenuSection;
-  MsgClearMenuItem: TIDEMenuCommand;
+  MsgAboutSection: TIDEMenuSection;
+    MsgAboutToolMenuItem: TIDEMenuCommand;
+    MsgOpenToolOptionsMenuItem: TIDEMenuCommand;
   MsgHideMsgOfTypeMenuItem: TIDEMenuCommand;
   MsgUnhideMsgTypesMenuSection: TIDEMenuSection;
     MsgUnhideMsgOneTypeMenuSection: TIDEMenuSection;
@@ -495,15 +488,15 @@ var
   MsgSaveToFileMenuSection: TIDEMenuSection;
     MsgSaveAllToFileMenuItem: TIDEMenuCommand;
     MsgSaveShownToFileMenuItem: TIDEMenuCommand;
+  MsgHelpMenuItem: TIDEMenuCommand;
+  MsgEditHelpMenuItem: TIDEMenuCommand;
+  MsgClearMenuItem: TIDEMenuCommand;
   MsgFilenameStyleMenuSection: TIDEMenuSection;
     MsgFileStyleShortMenuItem: TIDEMenuCommand;
     MsgFileStyleRelativeMenuItem: TIDEMenuCommand;
     MsgFileStyleFullMenuItem: TIDEMenuCommand;
   MsgTranslateMenuItem: TIDEMenuCommand;
   MsgShowIDMenuItem: TIDEMenuCommand;
-  MsgAboutSection: TIDEMenuSection;
-    MsgAboutToolMenuItem: TIDEMenuCommand;
-    MsgOpenToolOptionsMenuItem: TIDEMenuCommand;
 
 procedure RegisterStandardMessagesViewMenuItems;
 
@@ -521,7 +514,12 @@ begin
   Root:=MessagesMenuRoot;
   MsgFindMenuItem := RegisterIDEMenuCommand(Root, 'Find', 'Find ...');
   MsgQuickFixMenuSection := RegisterIDEMenuSection(Root, 'Quick Fix');
-  MsgClearMenuItem := RegisterIDEMenuCommand(Root, 'Clear', 'Clear');
+  MsgAboutSection:=RegisterIDEMenuSection(Root,'About');
+    Parent:=MsgAboutSection;
+    Parent.ChildsAsSubMenu:=true;
+    Parent.Caption:='About ...';
+    MsgAboutToolMenuItem:=RegisterIDEMenuCommand(Parent, 'About', 'About Tool');
+    MsgOpenToolOptionsMenuItem:=RegisterIDEMenuCommand(Parent, 'Open Tool Options', 'Open Tool Options');
   MsgHideMsgOfTypeMenuItem:=RegisterIDEMenuCommand(Root,'HideMsgOfType','');
   MsgUnhideMsgTypesMenuSection:=RegisterIDEMenuSection(Root,'UnhideMsgType');
     Parent:=MsgUnhideMsgTypesMenuSection;
@@ -560,6 +558,9 @@ begin
     Parent.Caption:='Save ...';
     MsgSaveShownToFileMenuItem:=RegisterIDEMenuCommand(Parent,'Save Shown Messages to File','Save Shown Messages to File ...');
     MsgSaveAllToFileMenuItem:=RegisterIDEMenuCommand(Parent,'Save All Messages to File','Save All/Original Messages to File ...');
+  MsgHelpMenuItem := RegisterIDEMenuCommand(Root, 'Help for this message',lisHelp);
+  MsgEditHelpMenuItem := RegisterIDEMenuCommand(Root, 'Edit help for messages',lisEditHelp);
+  MsgClearMenuItem := RegisterIDEMenuCommand(Root, 'Clear', 'Clear');
   MsgFilenameStyleMenuSection:=RegisterIDEMenuSection(Root,'Filename Styles');
     Parent:=MsgFilenameStyleMenuSection;
     Parent.ChildsAsSubMenu:=true;
@@ -569,12 +570,6 @@ begin
     MsgFileStyleFullMenuItem:=RegisterIDEMenuCommand(Parent,'Full','Full');
   MsgTranslateMenuItem:=RegisterIDEMenuCommand(Root, 'Translate', 'Translate the English Messages');
   MsgShowIDMenuItem:=RegisterIDEMenuCommand(Root, 'ShowID', 'Show Message Type ID');
-  MsgAboutSection:=RegisterIDEMenuSection(Root,'About');
-    Parent:=MsgAboutSection;
-    Parent.ChildsAsSubMenu:=true;
-    Parent.Caption:='About ...';
-    MsgAboutToolMenuItem:=RegisterIDEMenuCommand(Parent, 'About', 'About Tool');
-    MsgOpenToolOptionsMenuItem:=RegisterIDEMenuCommand(Parent, 'Open Tool Options', 'Open Tool Options');
 end;
 
 function CompareHideMsgType(HideMsgType1, HideMsgType2: Pointer): integer;
@@ -985,19 +980,21 @@ begin
 
   // apply pending src changes
   OldUpdateSortedSrcPos:=Lines.UpdateSortedSrcPos;
-  Lines.UpdateSortedSrcPos:=false;
-  try
-    for i:=OldLineCount to Lines.Count-1 do begin
-      MsgLine:=Lines[i];
-      //debugln(['TLMsgWndView.FetchAllPending ',i,' ',MsgLine.Msg]);
-      Line:=MsgLine.Line;
-      Col:=MsgLine.Column;
-      FPendingChanges.AdaptCaret(MsgLine.GetFullFilename,Line,Col,
-        mlfLeftToken in MsgLine.Flags);
-      MsgLine.SetSourcePosition(MsgLine.Filename,Line,Col);
+  if FPendingChanges.Count>0 then begin
+    Lines.UpdateSortedSrcPos:=false;
+    try
+      for i:=OldLineCount to Lines.Count-1 do begin
+        MsgLine:=Lines[i];
+        //debugln(['TLMsgWndView.FetchAllPending ',i,' ',MsgLine.Msg]);
+        Line:=MsgLine.Line;
+        Col:=MsgLine.Column;
+        FPendingChanges.AdaptCaret(MsgLine.GetFullFilename,Line,Col,
+          mlfLeftToken in MsgLine.Flags);
+        MsgLine.SetSourcePosition(MsgLine.Filename,Line,Col);
+      end;
+    finally
+      Lines.UpdateSortedSrcPos:=OldUpdateSortedSrcPos;
     end;
-  finally
-    Lines.UpdateSortedSrcPos:=OldUpdateSortedSrcPos;
   end;
 end;
 
@@ -1133,7 +1130,7 @@ begin
       inc(Result);
     if WithProgressLine then
       inc(Result);
-  end else if SummaryMsg<>'' then begin
+  end else if Caption<>'' then begin
     if WithHeader then
       inc(Result);
   end else if (Result>0) and WithHeader then
@@ -1163,20 +1160,19 @@ begin
          // debugln(['TLMsgWndView.RebuildLines i=',i,' Msg="',SrcMsg.Msg,'" Fits=',LineFits(SrcMsg),' ',dbgs(SrcMsg.Flags),' ',SrcMsg.OutputIndex]);
         if LineFits(SrcMsg) then begin
           NewProgressLine:=nil;
+          NewMsg:=Lines.CreateLine(-1);
+          NewMsg.Assign(SrcMsg);
+          // adapt line,col due to src changes
+          Line:=NewMsg.Line;
+          Col:=NewMsg.Column;
+          FPendingChanges.AdaptCaret(NewMsg.GetFullFilename,Line,Col,
+                                     mlfLeftToken in NewMsg.Flags);
+          NewMsg.SetSourcePosition(NewMsg.Filename,Line,Col);
+          //debugln(['TLMsgWndView.RebuildLines NewMsg=',Lines.Count,'="',NewMsg.Msg,'"']);
+          Lines.Add(NewMsg);
         end else begin
           NewProgressLine:=SrcMsg;
-          continue;
         end;
-        NewMsg:=Lines.CreateLine(-1);
-        NewMsg.Assign(SrcMsg);
-        // adapt line,col due to src changes
-        Line:=NewMsg.Line;
-        Col:=NewMsg.Column;
-        FPendingChanges.AdaptCaret(NewMsg.GetFullFilename,Line,Col,
-                                   mlfLeftToken in NewMsg.Flags);
-        NewMsg.SetSourcePosition(NewMsg.Filename,Line,Col);
-        //debugln(['TLMsgWndView.RebuildLines NewMsg=',Lines.Count,'="',NewMsg.Msg,'"']);
-        Lines.Add(NewMsg);
       end;
       FLastWorkerMessageCount:=Tool.WorkerMessages.Count-1;
       if (NewProgressLine<>nil) and Running then begin
@@ -1395,6 +1391,9 @@ begin
       exit;
     end;
   end;
+  // no views are running
+  // The variable fSomeViewsRunning contains the last state
+  // if fSomeViewsRunning was true, then all views have stopped
   AllViewsStopped:=fSomeViewsRunning;
   fSomeViewsRunning:=false;
   // no views running => update immediately
@@ -1459,7 +1458,7 @@ begin
   Invalidate;
 end;
 
-procedure TMessagesCtrl.SetFilenameStyle(AValue: TMsgCtrlFileNameStyle);
+procedure TMessagesCtrl.SetFilenameStyle(AValue: TMsgWndFileNameStyle);
 begin
   if FFilenameStyle=AValue then Exit;
   FFilenameStyle:=AValue;
@@ -1886,6 +1885,7 @@ begin
     if y>ClientHeight then break;
     View:=Views[i];
     if not View.HasContent then continue;
+
     View.FPaintStamp:=FPaintStamp;
     View.fPaintTop:=y;
 
@@ -1940,12 +1940,12 @@ begin
       // the first two lines are normal messages, not selected
       // => paint view header hint
       NodeRect:=Rect(0,0,ClientWidth,ItemHeight);
-      Canvas.Brush.Color:=AutoHeaderBackground;
-      Canvas.FillRect(NodeRect);
+      Canvas.GradientFill(NodeRect,HeaderBackground[View.ToolState],
+        AutoHeaderBackground,gdVertical);
       Canvas.Pen.Style:=psDash;
       Canvas.Line(NodeRect.Left,NodeRect.Bottom,NodeRect.Right,NodeRect.Bottom);
       Canvas.Pen.Style:=psSolid;
-      DrawText(NodeRect,GetHeaderText(View),false,clDefault);
+      DrawText(NodeRect,'...'+GetHeaderText(View),false,clDefault);
       Canvas.Brush.Color:=BackgroundColor;
     end;
     inc(y,ItemHeight*(View.Lines.Count-j));
@@ -2111,10 +2111,16 @@ begin
 end;
 
 procedure TMessagesCtrl.DoAllViewsStopped;
+var
+  CurLine: TMessageLine;
 begin
   if Assigned(OnAllViewsStopped) then
     OnAllViewsStopped(Self);
   if mcoAutoOpenFirstError in Options then begin
+    CurLine:=GetSelectedMsg;
+    if (CurLine<>nil) and (CurLine.Urgency>=mluError)
+    and CurLine.HasSourcePosition then
+      exit;
     if SelectFirstUrgentMessage(mluError,true) then
       OpenSelection;
   end;
@@ -2527,8 +2533,8 @@ function TMessagesCtrl.GetLineText(Line: TMessageLine): string;
 begin
   // 'filename(line,column) '
   case FilenameStyle of
-  mcfsShort: Result:=Line.GetShortFilename;
-  mcfsRelative: Result:=Line.GetRelativeFilename
+  mwfsShort: Result:=Line.GetShortFilename;
+  mwfsRelative: Result:=Line.GetRelativeFilename
   else Result:=Line.GetFullFilename;
   end;
   if Line.Line>0 then begin
@@ -2590,6 +2596,8 @@ function TMessagesCtrl.GetHeaderText(View: TLMsgWndView): string;
 
 begin
   Result:=View.Caption;
+  if Result='' then
+    Result:='Messages';
   if View.SummaryMsg<>'' then
     Result+=': '+View.SummaryMsg;
   if mcoShowStats in Options then begin
@@ -2748,11 +2756,11 @@ begin
   FSelectedView:=nil;
   FSelectedLine:=-1;
   BorderWidth:=0;
-  fBackgroundColor:=MCDefaultBackground;
-  FHeaderBackground[lmvtsRunning]:=MCDefaultHeaderBackgroundRunning;
-  FHeaderBackground[lmvtsSuccess]:=MCDefaultHeaderBackgroundSuccess;
-  FHeaderBackground[lmvtsFailed]:=MCDefaultHeaderBackgroundFailed;
-  FAutoHeaderBackground:=MCDefaultAutoHeaderBackground;
+  fBackgroundColor:=MsgWndDefBackgroundColor;
+  FHeaderBackground[lmvtsRunning]:=MsgWndDefHeaderBackgroundRunning;
+  FHeaderBackground[lmvtsSuccess]:=MsgWndDefHeaderBackgroundSuccess;
+  FHeaderBackground[lmvtsFailed]:=MsgWndDefHeaderBackgroundFailed;
+  FAutoHeaderBackground:=MsgWndDefAutoHeaderBackground;
   TabStop := True;
   ParentColor := False;
   FImageChangeLink := TChangeLink.Create;
@@ -2799,6 +2807,28 @@ end;
 procedure TMessagesCtrl.EraseBackground(DC: HDC);
 begin
   // everything is painted, so erasing the background is not needed
+end;
+
+procedure TMessagesCtrl.ApplyEnvironmentOptions;
+begin
+  BackgroundColor:=EnvironmentOptions.MsgViewColors[mwBackground];
+  AutoHeaderBackground:=EnvironmentOptions.MsgViewColors[mwAutoHeader];
+  HeaderBackground[lmvtsRunning]:=EnvironmentOptions.MsgViewColors[mwRunning];
+  HeaderBackground[lmvtsSuccess]:=EnvironmentOptions.MsgViewColors[mwSuccess];
+  HeaderBackground[lmvtsFailed]:=EnvironmentOptions.MsgViewColors[mwFailed];
+  if EnvironmentOptions.MsgViewDblClickJumps then
+    Options:=Options-[mcoSingleClickOpensFile]
+  else
+    Options:=Options+[mcoSingleClickOpensFile];
+  if EnvironmentOptions.HideMessagesIcons then
+    Options:=Options-[mcoShowMsgIcons]
+  else
+    Options:=Options+[mcoShowMsgIcons];
+  if EnvironmentOptions.MsgViewShowTranslations then
+    Options:=Options+[mcoShowTranslated]
+  else
+    Options:=Options-[mcoShowTranslated];
+  FilenameStyle:=EnvironmentOptions.MsgViewFilenameStyle;
 end;
 
 function TMessagesCtrl.IndexOfView(View: TLMsgWndView): integer;
@@ -3055,7 +3085,6 @@ begin
     end;
 
     MsgFindMenuItem.OnClick:=@FindMenuItemClick;
-    MsgClearMenuItem.OnClick:=@ClearMenuItemClick;
 
     // check selection
     View:=MessagesCtrl.SelectedView;
@@ -3078,14 +3107,14 @@ begin
     if View<>nil then
     begin
       MsgAboutToolMenuItem.Caption:='About '+View.Caption;
-      MsgAboutToolMenuItem.Visible:=true;
+      MsgAboutSection.Visible:=true;
       if View.Tool.Data is TIDEExternalToolData then begin
         ToolData:=TIDEExternalToolData(View.Tool.Data);
         if ToolData.Kind=IDEToolCompilePackage then
           ToolOptionsCaption:='Open Package '+ToolData.ModuleName;
       end;
     end else
-      MsgAboutToolMenuItem.Visible:=false;
+      MsgAboutSection.Visible:=false;
     MsgAboutToolMenuItem.OnClick:=@AboutToolMenuItemClick;
     MsgOpenToolOptionsMenuItem.Visible:=ToolOptionsCaption<>'';
     MsgOpenToolOptionsMenuItem.Caption:=ToolOptionsCaption;
@@ -3113,6 +3142,11 @@ begin
     MsgSaveAllToFileMenuItem.OnClick:=@SaveAllToFileMenuItemClick;
     MsgSaveShownToFileMenuItem.Enabled:=HasViewContent;
     MsgSaveShownToFileMenuItem.OnClick:=@SaveShownToFileMenuItemClick;
+    MsgHelpMenuItem.Enabled:=HasText;
+    MsgHelpMenuItem.OnClick:=@HelpMenuItemClick;
+    MsgEditHelpMenuItem.OnClick:=@EditHelpMenuItemClick;
+    MsgClearMenuItem.OnClick:=@ClearMenuItemClick;
+    MsgClearMenuItem.Enabled:=View<>nil;
 
     MinUrgency:=MessagesCtrl.ActiveFilter.MinUrgency;
     MsgHideWarningsMenuItem.Checked:=MinUrgency in [mluError..mluPanic];
@@ -3128,14 +3162,16 @@ begin
     MsgHideNoneMenuItem.Checked:=MinUrgency=mluNone;
     MsgHideNoneMenuItem.OnClick:=@HideUrgencyMenuItemClick;
 
-    MsgFileStyleShortMenuItem.Checked:=MessagesCtrl.FilenameStyle=mcfsShort;
+    MsgFileStyleShortMenuItem.Checked:=MessagesCtrl.FilenameStyle=mwfsShort;
     MsgFileStyleShortMenuItem.OnClick:=@FileStyleMenuItemClick;
-    MsgFileStyleRelativeMenuItem.Checked:=MessagesCtrl.FilenameStyle=mcfsRelative;
+    MsgFileStyleRelativeMenuItem.Checked:=MessagesCtrl.FilenameStyle=mwfsRelative;
     MsgFileStyleRelativeMenuItem.OnClick:=@FileStyleMenuItemClick;
-    MsgFileStyleFullMenuItem.Checked:=MessagesCtrl.FilenameStyle=mcfsFull;
+    MsgFileStyleFullMenuItem.Checked:=MessagesCtrl.FilenameStyle=mwfsFull;
     MsgFileStyleFullMenuItem.OnClick:=@FileStyleMenuItemClick;
 
+    MsgTranslateMenuItem.Checked:=mcoShowTranslated in MessagesCtrl.Options;
     MsgTranslateMenuItem.OnClick:=@TranslateMenuItemClick;
+    MsgShowIDMenuItem.Checked:=mcoShowMessageID in MessagesCtrl.Options;
     MsgShowIDMenuItem.OnClick:=@ShowIDMenuItemClick;
 
 
@@ -3218,18 +3254,19 @@ end;
 
 procedure TMessagesFrame.ShowIDMenuItemClick(Sender: TObject);
 begin
-  if MsgShowIDMenuItem.Checked then
-    MessagesCtrl.Options:=MessagesCtrl.Options+[mcoShowMessageID]
+  if mcoShowMessageID in MessagesCtrl.Options then
+    MessagesCtrl.Options:=MessagesCtrl.Options-[mcoShowMessageID]
   else
-    MessagesCtrl.Options:=MessagesCtrl.Options-[mcoShowMessageID];
+    MessagesCtrl.Options:=MessagesCtrl.Options+[mcoShowMessageID];
 end;
 
 procedure TMessagesFrame.TranslateMenuItemClick(Sender: TObject);
 begin
-  if MsgTranslateMenuItem.Checked then
-    MessagesCtrl.Options:=MessagesCtrl.Options+[mcoShowTranslated]
+  if mcoShowTranslated in MessagesCtrl.Options then
+    MessagesCtrl.Options:=MessagesCtrl.Options-[mcoShowTranslated]
   else
-    MessagesCtrl.Options:=MessagesCtrl.Options-[mcoShowTranslated];
+    MessagesCtrl.Options:=MessagesCtrl.Options+[mcoShowTranslated];
+  EnvironmentOptions.MsgViewShowTranslations:=mcoShowTranslated in MessagesCtrl.Options;
 end;
 
 procedure TMessagesFrame.UnhideMsgTypeClick(Sender: TObject);
@@ -3291,14 +3328,20 @@ begin
   CopyAllClicked(true);
 end;
 
+procedure TMessagesFrame.EditHelpMenuItemClick(Sender: TObject);
+begin
+  ShowMessageHelpEditor;
+end;
+
 procedure TMessagesFrame.FileStyleMenuItemClick(Sender: TObject);
 begin
   if Sender=MsgFileStyleShortMenuItem then
-    MessagesCtrl.FilenameStyle:=mcfsShort
+    MessagesCtrl.FilenameStyle:=mwfsShort
   else if Sender=MsgFileStyleRelativeMenuItem then
-    MessagesCtrl.FilenameStyle:=mcfsRelative
+    MessagesCtrl.FilenameStyle:=mwfsRelative
   else if Sender=MsgFileStyleFullMenuItem then
-    MessagesCtrl.FilenameStyle:=mcfsFull;
+    MessagesCtrl.FilenameStyle:=mwfsFull;
+  EnvironmentOptions.MsgViewFilenameStyle:=MessagesCtrl.FilenameStyle;
 end;
 
 procedure TMessagesFrame.FindMenuItemClick(Sender: TObject);
@@ -3308,9 +3351,14 @@ begin
   SearchEdit.SetFocus;
 end;
 
+procedure TMessagesFrame.HelpMenuItemClick(Sender: TObject);
+begin
+  ExecuteIDECommand(Self, ecContextHelp);
+end;
+
 procedure TMessagesFrame.HideHintsWithoutPosMenuItemClick(Sender: TObject);
 begin
-  MessagesCtrl.ActiveFilter.HideNotesWithoutPos:=MsgHideHintsWithoutPosMenuItem.Checked;
+  MessagesCtrl.ActiveFilter.HideNotesWithoutPos:=not MessagesCtrl.ActiveFilter.HideNotesWithoutPos;
 end;
 
 procedure TMessagesFrame.HideMsgOfTypeMenuItemClick(Sender: TObject);
@@ -3626,14 +3674,7 @@ end;
 
 procedure TMessagesFrame.ApplyIDEOptions;
 begin
-  if EnvironmentOptions.MsgViewDblClickJumps then
-    MessagesCtrl.Options:=MessagesCtrl.Options-[mcoSingleClickOpensFile]
-  else
-    MessagesCtrl.Options:=MessagesCtrl.Options+[mcoSingleClickOpensFile];
-  if EnvironmentOptions.HideMessagesIcons then
-    MessagesCtrl.Options:=MessagesCtrl.Options-[mcoShowMsgIcons]
-  else
-    MessagesCtrl.Options:=MessagesCtrl.Options+[mcoShowMsgIcons];
+  MessagesCtrl.ApplyEnvironmentOptions;
 end;
 
 function TMessagesFrame.ViewCount: integer;

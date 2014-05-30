@@ -118,7 +118,7 @@ uses
   ChgEncodingDlg, ConvertDelphi, ConvCodeTool, MissingPropertiesDlg, LazXMLForms,
   // environment option frames
   editor_general_options, componentpalette_options, formed_options, OI_options,
-  files_options, desktop_options, window_options,
+  MsgWnd_Options, files_options, desktop_options, window_options,
   Backup_Options, naming_options, fpdoc_options,
   editor_display_options, editor_keymapping_options, editor_mouseaction_options,
   editor_mouseaction_options_advanced, editor_color_options, editor_markup_options,
@@ -289,9 +289,13 @@ type
     procedure mnuSourceInsertCVSSourceClick(Sender: TObject);
     // source->insert general
     procedure mnuSourceInsertGPLNoticeClick(Sender: TObject);
+    procedure mnuSourceInsertGPLNoticeTranslatedClick(Sender: TObject);
     procedure mnuSourceInsertLGPLNoticeClick(Sender: TObject);
+    procedure mnuSourceInsertLGPLNoticeTranslatedClick(Sender: TObject);
     procedure mnuSourceInsertModifiedLGPLNoticeClick(Sender: TObject);
+    procedure mnuSourceInsertModifiedLGPLNoticeTranslatedClick(Sender: TObject);
     procedure mnuSourceInsertMITNoticeClick(Sender: TObject);
+    procedure mnuSourceInsertMITNoticeTranslatedClick(Sender: TObject);
     procedure mnuSourceInsertUsernameClick(Sender: TObject);
     procedure mnuSourceInsertDateTimeClick(Sender: TObject);
     procedure mnuSourceInsertChangeLogEntryClick(Sender: TObject);
@@ -2330,11 +2334,11 @@ begin
   IDEQuickFixes:=TIDEQuickFixes.Create(Self);
   {$ELSE}
   InitStandardIDEQuickFixItems;
+  {$ENDIF}
   InitCodeBrowserQuickFixItems;
   InitFindUnitQuickFixItems;
   InitInspectChecksumChangedQuickFixItems;
   InitUnitDependenciesQuickFixItems;
-  {$ENDIF}
 end;
 
 procedure TMainIDE.SetupStartProject;
@@ -2766,9 +2770,13 @@ begin
     itmSourceInsertCVSSource.OnClick:=@mnuSourceInsertCVSSourceClick;
     // insert general
     itmSourceInsertGPLNotice.OnClick:=@mnuSourceInsertGPLNoticeClick;
+    itmSourceInsertGPLNoticeTranslated.OnClick:=@mnuSourceInsertGPLNoticeTranslatedClick;
     itmSourceInsertLGPLNotice.OnClick:=@mnuSourceInsertLGPLNoticeClick;
+    itmSourceInsertLGPLNoticeTranslated.OnClick:=@mnuSourceInsertLGPLNoticeTranslatedClick;
     itmSourceInsertModifiedLGPLNotice.OnClick:=@mnuSourceInsertModifiedLGPLNoticeClick;
+    itmSourceInsertModifiedLGPLNoticeTranslated.OnClick:=@mnuSourceInsertModifiedLGPLNoticeTranslatedClick;
     itmSourceInsertMITNotice.OnClick:=@mnuSourceInsertMITNoticeClick;
+    itmSourceInsertMITNoticeTranslated.OnClick:=@mnuSourceInsertMITNoticeTranslatedClick;
     itmSourceInsertUsername.OnClick:=@mnuSourceInsertUsernameClick;
     itmSourceInsertDateTime.OnClick:=@mnuSourceInsertDateTimeClick;
     itmSourceInsertChangeLogEntry.OnClick:=@mnuSourceInsertChangeLogEntryClick;
@@ -3274,6 +3282,16 @@ end;
 
 procedure TMainIDE.OnProcessIDECommand(Sender: TObject;
   Command: word;  var Handled: boolean);
+
+  function IsOnWindow(Wnd: TWinControl): boolean;
+  begin
+    Result:=false;
+    if Wnd=nil then exit;
+    if not (Sender is TControl) then exit;
+    if Sender=Wnd then exit(true);
+    Result:=Wnd.IsParentOf(TControl(Sender));
+  end;
+
 var
   ASrcEdit: TSourceEditor;
   AnUnitInfo: TUnitInfo;
@@ -3286,7 +3304,7 @@ begin
   case Command of
   ecEditContextHelp: ShowContextHelpEditor(Sender);
   ecContextHelp:
-    if Sender=MessagesView then
+    if IsOnWindow(MessagesView) then
       HelpBoss.ShowHelpForMessage{$IFDEF EnableNewExtTools}(){$ELSE}(-1){$ENDIF}
     else if Sender is TObjectInspectorDlg then
       HelpBoss.ShowHelpForObjectInspector(Sender);
@@ -3970,9 +3988,17 @@ begin
       itmSourceInsertCVSSource.Enabled:=Editable;
     //itmSourceInsertGeneral
       itmSourceInsertGPLNotice.Enabled:=Editable;
+      itmSourceInsertGPLNoticeTranslated.Visible:=
+                                  Editable and (EnglishGPLNotice<>lisGPLNotice);
       itmSourceInsertLGPLNotice.Enabled:=Editable;
+      itmSourceInsertLGPLNoticeTranslated.Visible:=
+                                Editable and (EnglishLGPLNotice<>lisLGPLNotice);
       itmSourceInsertModifiedLGPLNotice.Enabled:=Editable;
+      itmSourceInsertModifiedLGPLNoticeTranslated.Visible:=
+                Editable and (EnglishModifiedLGPLNotice<>lisModifiedLGPLNotice);
       itmSourceInsertMITNotice.Enabled:=Editable;
+      itmSourceInsertMITNoticeTranslated.Visible:=
+                                  Editable and (EnglishMITNotice<>lisMITNotice);
       itmSourceInsertUsername.Enabled:=Editable;
       itmSourceInsertDateTime.Enabled:=Editable;
       itmSourceInsertChangeLogEntry.Enabled:=Editable;
@@ -7215,7 +7241,9 @@ begin
           Project1.LastCompilerFilename:=CompilerFilename;
           Project1.LastCompilerParams:=CompilerParams;
           Project1.LastCompilerFileDate:=FileAgeCached(CompilerFilename);
+          {$IFNDEF EnableNewExtTools}
           DoJumpToCompilerMessage(not EnvironmentOptions.ShowCompileDialog);
+          {$ENDIF}
           CompileProgress.Ready(lisInfoBuildError);
           debugln(['TMainIDE.DoBuildProject Compile failed']);
           exit;
@@ -7286,7 +7314,10 @@ end;
 function TMainIDE.DoAbortBuild: TModalResult;
 begin
   Result:=mrOk;
+  {$IFDEF EnableNewExtTools}
+  {$ELSE}
   if ToolStatus<>itBuilder then exit;
+  {$ENDIF}
   AbortBuild;
 end;
 
@@ -11915,6 +11946,7 @@ var
     if not BossResult then begin
       CodeToolBossErrMsg:=CodeToolBoss.ErrorMessage;
       DoJumpToCodeToolBossError;
+      // raise an exception to stop the rename
       raise Exception.Create(ErrorMsg+LineEnding+LineEnding+lisError
                         +CodeToolBossErrMsg+LineEnding+LineEnding+lisSeeMessages);
     end;
@@ -13834,9 +13866,19 @@ begin
   DoSourceEditorCommand(ecInsertGPLNotice);
 end;
 
+procedure TMainIDE.mnuSourceInsertGPLNoticeTranslatedClick(Sender: TObject);
+begin
+  DoSourceEditorCommand(ecInsertGPLNoticeTranslated);
+end;
+
 procedure TMainIDE.mnuSourceInsertLGPLNoticeClick(Sender: TObject);
 begin
   DoSourceEditorCommand(ecInsertLGPLNotice);
+end;
+
+procedure TMainIDE.mnuSourceInsertLGPLNoticeTranslatedClick(Sender: TObject);
+begin
+  DoSourceEditorCommand(ecInsertLGPLNoticeTranslated);
 end;
 
 procedure TMainIDE.mnuSourceInsertModifiedLGPLNoticeClick(Sender: TObject);
@@ -13844,9 +13886,20 @@ begin
   DoSourceEditorCommand(ecInsertModifiedLGPLNotice);
 end;
 
+procedure TMainIDE.mnuSourceInsertModifiedLGPLNoticeTranslatedClick(
+  Sender: TObject);
+begin
+  DoSourceEditorCommand(ecInsertModifiedLGPLNoticeTranslated);
+end;
+
 procedure TMainIDE.mnuSourceInsertMITNoticeClick(Sender: TObject);
 begin
   DoSourceEditorCommand(ecInsertMITNotice);
+end;
+
+procedure TMainIDE.mnuSourceInsertMITNoticeTranslatedClick(Sender: TObject);
+begin
+  DoSourceEditorCommand(ecInsertMITNoticeTranslated);
 end;
 
 procedure TMainIDE.mnuSourceInsertUsernameClick(Sender: TObject);

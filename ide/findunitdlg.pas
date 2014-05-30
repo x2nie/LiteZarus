@@ -124,6 +124,7 @@ type
 
   TQuickFixUnitNotFound_Search = class(TMsgQuickFix)
   public
+    function IsApplicable(Msg: TMessageLine; out MissingUnit, UsedByUnit: string): boolean;
     procedure CreateMenuItems(Fixes: TMsgQuickFixes); override;
     procedure QuickFix(Fixes: TMsgQuickFixes; Msg: TMessageLine); override;
   end;
@@ -132,6 +133,7 @@ type
 
   TQuickFixIncludeNotFound_Search = class(TMsgQuickFix)
   public
+    function IsApplicable(Msg: TMessageLine; out IncludeFile: string): boolean;
     procedure CreateMenuItems(Fixes: TMsgQuickFixes); override;
     procedure QuickFix(Fixes: TMsgQuickFixes; Msg: TMessageLine); override;
     function IsCodetoolsErrorIncludeFileNotFound(Msg: string;
@@ -169,40 +171,54 @@ implementation
 procedure InitFindUnitQuickFixItems;
 begin
   RegisterIDEMsgQuickFix(TQuickFixUnitNotFound_Search.Create);
+  // ToDo: implement RegisterIDEMsgQuickFix(TQuickFixIncludeNotFound_Search.Create);
 end;
 
 {$IFDEF EnableNewExtTools}
 { TQuickFixUnitNotFound_Search }
 
+function TQuickFixUnitNotFound_Search.IsApplicable(Msg: TMessageLine; out
+  MissingUnit, UsedByUnit: string): boolean;
+begin
+  Result:=false;
+  if Msg=nil then exit;
+  if Msg.MsgID<>FPCMsgIDCantFindUnitUsedBy then exit;
+  MissingUnit:=Msg.Attribute[FPCMsgAttrMissingUnit];
+  UsedByUnit:=Msg.Attribute[FPCMsgAttrUsedByUnit];
+  if (MissingUnit='')
+  and not IDEFPCParser.GetFPCMsgValues(Msg,MissingUnit,UsedByUnit) then begin
+    debugln(['TQuickFixUnitNotFound_Search.IsApplicable failed to extract unit names: ',Msg.Msg]);
+    exit;
+  end;
+  Result:=true;
+end;
+
 procedure TQuickFixUnitNotFound_Search.CreateMenuItems(Fixes: TMsgQuickFixes);
 var
   Msg: TMessageLine;
+  MissingUnit: string;
+  UsedByUnit: string;
 begin
   if Fixes.LineCount<>1 then exit;
   Msg:=Fixes.Lines[0];
-  if (Msg.SubTool<>SubToolFPC)
-  or (Msg.MsgID<>10022) // Can't find unit $1 used by $2
-  then exit;
-  Fixes.AddMenuItem(Self,Msg,'Search Unit');
+  if not IsApplicable(Msg,MissingUnit,UsedByUnit) then exit;
+  Fixes.AddMenuItem(Self,Msg,'Search Unit "'+MissingUnit+'"');
 end;
 
 procedure TQuickFixUnitNotFound_Search.QuickFix(Fixes: TMsgQuickFixes;
   Msg: TMessageLine);
 var
-  AnUnitName: String;
+  MissingUnit: String;
+  UsedByUnit: string;
   CodeBuf: TCodeBuffer;
   Dlg: TFindUnitDialog;
 begin
   // get unitname
-  if not REMatches(Msg.Msg,'Can''t find unit ([a-z_0-9]+) ','I') then begin
-    DebugLn('TQuickFixUnitNotFound_Search invalid message ',Msg.Msg);
-    exit;
-  end;
-  AnUnitName:=REVar(1);
-  DebugLn(['TQuickFixUnitNotFound_Search.Execute Unit=',AnUnitName]);
+  if not IsApplicable(Msg,MissingUnit,UsedByUnit) then exit;
+  DebugLn(['TQuickFixUnitNotFound_Search.Execute Unit=',MissingUnit]);
 
-  if (AnUnitName='') or (not IsValidIdent(AnUnitName)) then begin
-    DebugLn(['TQuickFixUnitNotFound_Search.Execute not an identifier "',dbgstr(AnUnitName),'"']);
+  if (MissingUnit='') or (not IsValidIdent(MissingUnit)) then begin
+    DebugLn(['TQuickFixUnitNotFound_Search.Execute not an identifier "',dbgstr(MissingUnit),'"']);
     exit;
   end;
 
@@ -220,7 +236,7 @@ begin
   // show dialog
   Dlg:=TFindUnitDialog.Create(nil);
   try
-    Dlg.InitWithMsg(Msg.Msg,CodeBuf,AnUnitName);
+    Dlg.InitWithMsg(Msg.Msg,CodeBuf,MissingUnit);
     Dlg.ShowModal;
   finally
     Dlg.Free;
@@ -686,6 +702,20 @@ end;
 {$IFDEF EnableNewExtTools}
 { TQuickFixIncludeNotFound_Search }
 
+function TQuickFixIncludeNotFound_Search.IsApplicable(Msg: TMessageLine; out
+  IncludeFile: string): boolean;
+var
+  Dummy: string;
+begin
+  debugln(['TQuickFixIncludeNotFound_Search.IsApplicable ',Msg.Msg,' ',TIDEFPCParser.MsgLineIsId(Msg,2013,IncludeFile,Dummy),' ',IsCodetoolsErrorIncludeFileNotFound(Msg.Msg,IncludeFile)]);
+  if TIDEFPCParser.MsgLineIsId(Msg,2013,IncludeFile,Dummy) then
+    Result:=true // Can't open include file "$1"
+  else
+    Result:=IsCodetoolsErrorIncludeFileNotFound(Msg.Msg,IncludeFile);
+  if IncludeFile='' then
+    Result:=false;
+end;
+
 procedure TQuickFixIncludeNotFound_Search.CreateMenuItems(Fixes: TMsgQuickFixes
   );
 var
@@ -694,13 +724,8 @@ var
 begin
   if Fixes.LineCount<>1 then exit;
   Msg:=Fixes.Lines[0];
-  if (Msg.SubTool<>SubToolFPC)
-  or (Msg.MsgID<>2013) // Can't open include file "$1"
-  then begin
-    if not IsCodetoolsErrorIncludeFileNotFound(Msg.Msg,IncludeFile) then
-      exit;
-  end;
-  Fixes.AddMenuItem(Self,Msg,'Search Include File');
+  if not IsApplicable(Msg,IncludeFile) then exit;
+  Fixes.AddMenuItem(Self,Msg,'Search Include File "'+ExtractFilename(IncludeFile)+'"');
 end;
 
 procedure TQuickFixIncludeNotFound_Search.QuickFix(Fixes: TMsgQuickFixes;
@@ -711,6 +736,9 @@ var
   Dlg: TFindUnitDialog;
 begin
   DebugLn(['TQuickFixIncludeNotFound_Search.Execute ']);
+  if not IsApplicable(Msg,IncludeFilename) then exit;
+  DebugLn(['TQuickFixIncludeNotFound_Search.Execute include file=',IncludeFilename]);
+
   if not LazarusIDE.BeginCodeTools then begin
     DebugLn(['TQuickFixIncludeNotFound_Search.Execute failed because IDE busy']);
     exit;
@@ -721,15 +749,6 @@ begin
     debugln(['TQuickFixIncludeNotFound_Search.QuickFix can not load file "',Msg.GetFullFilename,'"']);
     exit;
   end;
-
-  // get include file name
-  if not IsCodetoolsErrorIncludeFileNotFound(Msg.Msg,IncludeFilename) then
-  begin
-    IncludeFilename:=TFPCParser.GetFPCMsgValue1(Msg);
-  end;
-  DebugLn(['TQuickFixIncludeNotFound_Search.Execute include file=',IncludeFilename]);
-  if IncludeFilename='' then
-    exit;
 
   // show dialog
   Dlg:=TFindUnitDialog.Create(nil);

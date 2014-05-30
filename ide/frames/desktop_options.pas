@@ -63,8 +63,6 @@ type
     lblLanguage: TLabel;
     lblAutoSave: TLabel;
     LoadDesktopSettingsFromFileButton: TButton;
-    MsgViewDblClickJumpsCheckBox: TCheckBox;
-    MsgViewFocusCheckBox: TCheckBox;
     PanelGlyphsButtonsOptions: TPanel;
     PanelGlyphsMenusOptions: TPanel;
     rbMenuGlyphShowAlways: TRadioButton;
@@ -153,10 +151,8 @@ begin
   ShowHintsForComponentPaletteCheckBox.Caption := dlgPalHints;
   ShowHintsForMainSpeedButtonsCheckBox.Caption := dlgSpBHints;
 
-  // messages view + misc
+  // misc
   lblMisc.Caption := dlgDesktopMisc;
-  MsgViewDblClickJumpsCheckBox.Caption:=lisEnvJumpFromMessageToSrcOnDblClickOtherwiseSingleClick;
-  MsgViewFocusCheckBox.Caption:=dlgEOFocusMessagesAfterCompilation;
   CheckDiskChangesWithLoadingCheckBox.Caption :=
     lisCheckForDiskFileChangesViaContentRatherThanTimesta;
 end;
@@ -183,10 +179,6 @@ begin
       ShowHintsForComponentPalette;
     ShowHintsForMainSpeedButtonsCheckBox.Checked:=
       ShowHintsForMainSpeedButtons;
-      
-    // messages view
-    MsgViewDblClickJumpsCheckBox.Checked:=MsgViewDblClickJumps;
-    MsgViewFocusCheckBox.Checked:=MsgViewFocus;
 
     // glyphs
     case ShowButtonGlyphs of
@@ -222,9 +214,6 @@ begin
     ShowHintsForComponentPalette:=ShowHintsForComponentPaletteCheckBox.Checked;
     ShowHintsForMainSpeedButtons:=ShowHintsForMainSpeedButtonsCheckBox.Checked;
     
-    // messages view
-    MsgViewDblClickJumps:=MsgViewDblClickJumpsCheckBox.Checked;
-    MsgViewFocus:=MsgViewFocusCheckBox.Checked;
     // glyphs
     if rbBtnGlyphShowAlways.Checked then
       ShowButtonGlyphs := sbgAlways

@@ -34,6 +34,8 @@ const
   SubToolDefault = 'External Tool';
   SubToolDefaultPriority = 0;
 
+  AbortedExitCode = 12321;
+
 type
   TETShareStringEvent = procedure(var s: string) of object;
 
@@ -138,13 +140,13 @@ type
     function HasSourcePosition: boolean;
     procedure GetAttributes(List: TStrings);
   public
-    property Index: integer read FIndex; // index in Lines  (Note: Lines can have more or less lines than the raw output)
+    property Index: integer read FIndex; // index in Lines (Note: Lines can have more or less items than the raw output has text lines)
     property Urgency: TMessageLineUrgency read FUrgency write SetUrgency;
-    property SubTool: string read FSubTool write SetSubTool; // e.g. FPC, make, linker, windres
+    property SubTool: string read FSubTool write SetSubTool; // e.g. SubToolFPC, SubToolMake, SubToolFPCLinker
     property SubType: PtrUInt read FSubType write SetSubType; // depends on SubTool
-    property Msg: string read FMsg write SetMsg;     // improved message without filename, line, column
+    property Msg: string read FMsg write SetMsg;     // improved message without filename, line, column, setting it clears TranslatedMsg
     property MsgID: integer read FMsgID write SetMsgID;  // message id (depends on parser, e.g. fpc writes them with -vq, MsgID<>0 if valid)
-    property TranslatedMsg: string read FTranslatedMsg write SetTranslatedMsg; // translated Msg
+    property TranslatedMsg: string read FTranslatedMsg write SetTranslatedMsg; // translated Msg, set this after Msg
     property Filename: string read FFilename write SetFilename; // full file name, relative if not found or not yet searched
     property Line: integer read FLine write SetLine; // valid if >0
     property Column: integer read FColumn write SetColumn; // valid if >0
@@ -209,6 +211,7 @@ type
     function Count: integer; inline;
     procedure Clear;
     property Items[Index: integer]: TMessageLine read GetItems; default;
+    function GetLastLine: TMessageLine;
     property BaseDirectory: string read FBaseDirectory write SetBaseDirectory; // always trimmed and with trailing /
     function CreateLine(OutputIndex: integer): TMessageLine; // create, but do not yet add it
     procedure Add(MsgLine: TMessageLine);
@@ -275,6 +278,8 @@ type
   public
     class function GetFPCParser(Msg: TMessageLine): TFPCParser;
     function GetFPCMsgIDPattern(MsgID: integer): string; virtual; abstract;
+    class function MsgLineIsId(Msg: TMessageLine; MsgId: integer;
+      out Value1, Value2: string): boolean; virtual; abstract;
     class function GetFPCMsgPattern(Msg: TMessageLine): string; virtual; abstract;
     class function GetFPCMsgValue1(Msg: TMessageLine): string; virtual; abstract;
     class function GetFPCMsgValues(Msg: TMessageLine; out Value1, Value2: string): boolean; virtual; abstract;
@@ -340,7 +345,7 @@ type
     function ApplyPending: boolean; virtual; // true if something changed (main thread)
     procedure InputClosed; virtual; // called by Tool when source closed (main thread)
     function LineFits(Line: TMessageLine): boolean; virtual; // called by ProcessNewMessages (worker thread)
-    procedure EnterCriticalSection; virtual;
+    procedure EnterCriticalSection; virtual; // Note: when using Tool and View: always lock Tool before View
     procedure LeaveCriticalSection; virtual;
     procedure ConsistencyCheck; virtual;
   public
@@ -439,7 +444,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure EnterCriticalSection; virtual; // always use before access
+    procedure EnterCriticalSection; virtual; // always use before access, when using Tool and View: always lock Tool before View
     procedure LeaveCriticalSection; virtual;
     property Thread: TThread read FThread write FThread;
     procedure ConsistencyCheck; virtual;
@@ -1486,6 +1491,14 @@ begin
   IncreaseChangeStamp;
 end;
 
+function TMessageLines.GetLastLine: TMessageLine;
+begin
+  if Count>0 then
+    Result:=Items[Count-1]
+  else
+    Result:=nil;
+end;
+
 function TMessageLines.CreateLine(OutputIndex: integer): TMessageLine;
 begin
   Result:=MessageLineClass.Create;
@@ -1494,6 +1507,9 @@ begin
 end;
 
 procedure TMessageLines.Add(MsgLine: TMessageLine);
+var
+  Cnt: Integer;
+  Prev: TMessageLine;
 begin
   if MsgLine.Index>=0 then
     raise Exception.Create('TMessageLines.Add already added');
@@ -1501,6 +1517,17 @@ begin
   MsgLine.FIndex:=fItems.Add(MsgLine);
   FSortedForSrcPos.Add(MsgLine);
   inc(UrgencyCounts[MsgLine.Urgency]);
+
+  // save some memory by combining strings
+  Cnt:=Count;
+  if (Cnt>1) then begin
+    Prev:=Items[Cnt-2];
+    if MsgLine.Filename=Prev.Filename then
+    MsgLine.fFilename:=Prev.Filename;
+    if MsgLine.OriginalLine=Prev.OriginalLine then
+    MsgLine.fOriginalLine:=Prev.OriginalLine;
+  end;
+
   LineChanged(MsgLine);
 end;
 
@@ -1807,6 +1834,7 @@ procedure TMessageLine.SetMsg(AValue: string);
 begin
   if FMsg=AValue then Exit;
   FMsg:=AValue;
+  FTranslatedMsg:='';
   IncreaseChangeStamp;
 end;
 
@@ -1984,7 +2012,10 @@ end;
 
 procedure TMessageLine.GetAttributes(List: TStrings);
 begin
-  List.Assign(fAttributes);
+  if fAttributes<>nil then
+    List.Assign(fAttributes)
+  else
+    List.Clear;
   List.Values['Urgency']:=MessageLineUrgencyNames[Urgency];
   List.Values['SubTool']:=SubTool;
   List.Values['SubType']:=IntToStr(SubType);
@@ -2067,15 +2098,14 @@ begin
       //debugln(['TExtToolView.ProcessNewMessages Msg="',SrcMsg.Msg,'" Fits=',LineFits(SrcMsg)]);
       if LineFits(SrcMsg) then begin
         NewProgressLine:=nil;
+        Changed:=true;
+        NewMsg:=PendingLines.CreateLine(-1);
+        NewMsg.Assign(SrcMsg);
+        //debugln(['TExtToolView.ProcessNewMessages NewMsg=',Lines.Count,'="',NewMsg.Msg,'"']);
+        PendingLines.Add(NewMsg);
       end else begin
         NewProgressLine:=SrcMsg;
-        continue;
       end;
-      Changed:=true;
-      NewMsg:=PendingLines.CreateLine(-1);
-      NewMsg.Assign(SrcMsg);
-      //debugln(['TExtToolView.ProcessNewMessages NewMsg=',Lines.Count,'="',NewMsg.Msg,'"']);
-      PendingLines.Add(NewMsg);
     end;
     FLastWorkerMessageCount:=Tool.WorkerMessages.Count-1;
     if (NewProgressLine<>nil) and Running then begin
