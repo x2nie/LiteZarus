@@ -564,6 +564,8 @@ type
 
   TOnAddAvailablePersistent = procedure(APersistent: TPersistent;
     var Allowed: boolean) of object;
+  //copy of TGetPersistentImageIndexEvent
+  TOnOINodeGetImageEvent = procedure(APersistent: TPersistent; var AImageIndex: integer) of object;
 
   TOIFlag = (
     oifRebuildPropListsNeeded
@@ -634,6 +636,7 @@ type
     procedure OnShowStatusBarPopupMenuItemClick(Sender: TObject);
     procedure OnShowOptionsPopupMenuItemClick(Sender: TObject);
     procedure OnMainPopupMenuPopup(Sender: TObject);
+    procedure OnVTNodeGetImageIndex(APersistent: TPersistent; var AIndex: integer);
     procedure RestrictedPageShow(Sender: TObject);
     procedure WidgetSetRestrictedPaint(Sender: TObject);
     procedure ComponentRestrictedPaint(Sender: TObject);
@@ -671,6 +674,7 @@ type
     FUpdateLock: integer;
     FUpdatingAvailComboBox: Boolean;
     FComponentEditor: TBaseComponentEditor;
+    FOnNodeGetImageIndex: TOnOINodeGetImageEvent;
     function GetGridControl(Page: TObjectInspectorPage): TOICustomPropertyGrid;
     procedure SetComponentEditor(const AValue: TBaseComponentEditor);
     procedure SetFavorites(const AValue: TOIFavoriteProperties);
@@ -773,6 +777,7 @@ type
     property OnUpdateRestricted: TNotifyEvent read FOnUpdateRestricted
                                          write FOnUpdateRestricted;
     property OnViewRestricted: TNotifyEvent read FOnViewRestricted write FOnViewRestricted;
+    property OnNodeGetImageIndex : TOnOINodeGetImageEvent read FOnNodeGetImageIndex write FOnNodeGetImageIndex;
     property PropertyEditorHook: TPropertyEditorHook
                            read FPropertyEditorHook write SetPropertyEditorHook;
     property RestrictedProps: TOIRestrictedProperties read FRestricted write SetRestricted;
@@ -3984,6 +3989,7 @@ begin
     OnDblClick := @ComponentTreeDblClick;
     OnKeyDown := @ComponentTreeKeyDown;
     OnSelectionChanged := @ComponentTreeSelectionChanged;
+    OnComponentGetImageIndex := @OnVTNodeGetImageIndex;
     OnModified := @DoModified;
     Scrollbars := ssAutoBoth;
     PopupMenu := MainPopupMenu;
@@ -5401,6 +5407,14 @@ begin
   if FFavorites=AValue then exit;
   FFavorites:=AValue;
   FavoriteGrid.Favorites:=FFavorites;
+end;
+
+procedure TObjectInspectorDlg.OnVTNodeGetImageIndex(
+  APersistent: TPersistent; var AIndex: integer);
+begin
+  //ask TMediator
+  if assigned(FOnNodeGetImageIndex) then
+    FOnNodeGetImageIndex(APersistent, AIndex);
 end;
 
 { TCustomPropertiesGrid }
