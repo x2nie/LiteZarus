@@ -10,6 +10,8 @@
 *.lps
 lib
 units
+/laz_*
+/laz-*
 
 #################
 ## Delphi
