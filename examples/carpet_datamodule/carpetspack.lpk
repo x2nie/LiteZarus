@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <Name Value="CarpetsPack"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="x2nie"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <SearchPaths>
+        <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <UseAnsiStrings Value="False"/>
+        </SyntaxOptions>
+      </Parsing>
+      <Other>
+        <CompilerPath Value="$(CompPath)"/>
+      </Other>
+    </CompilerOptions>
+    <License Value="LGPL 2.1 "/>
+    <Version Major="1"/>
+    <Files Count="3">
+      <Item1>
+        <Filename Value="README.txt"/>
+        <Type Value="Text"/>
+      </Item1>
+      <Item2>
+        <Filename Value="carpet_designer.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="Carpet_Designer"/>
+      </Item2>
+      <Item3>
+        <Filename Value="carpets.pas"/>
+        <UnitName Value="Carpets"/>
+      </Item3>
+    </Files>
+    <Type Value="DesignTime"/>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="IDEIntf"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

@@ -1,0 +1,39 @@
+object DataRoom1: TDataRoom1
+  Left = 343
+  Top = 208
+  Width = 750
+  Height = 404
+  Visible = False
+  Color = 16777215
+  Caption = 'DataRoom1'
+  object Carpet1: TCarpet
+    Left = 19
+    Top = 4
+    Width = 188
+    Height = 150
+    Visible = False
+    BorderLeft = 1
+    BorderRight = 1
+    BorderBottom = 1
+    Color = 7994778
+    Caption = 'Carpet1'
+    object Carpet2: TCarpet
+      Left = 127
+      Top = 12
+      Width = 50
+      Height = 50
+      Visible = False
+      Color = 12639424
+      Caption = 'Carpet2'
+    end
+  end
+  object BufDataset1: TBufDataset
+    FieldDefs = <>
+    left = 42
+    top = 56
+  end
+  object DataSource1: TDataSource
+    left = 80
+    top = 56
+  end
+end
