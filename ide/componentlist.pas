@@ -34,7 +34,7 @@ interface
 uses
   Classes, SysUtils, LCLType, Forms, Controls, Graphics, StdCtrls, ExtCtrls,
   ComCtrls, ButtonPanel, Buttons, LazarusIDEStrConsts, ComponentReg, PackageDefs,
-  FormEditingIntf, TreeFilterEdit, fgl, LCLProc;
+  FormEditingIntf, TreeFilterEdit, fgl, LCLProc, XMLConf;
 
 type
 
@@ -44,6 +44,9 @@ type
 
   TComponentListForm = class(TForm)
     ListTree: TTreeView;
+    PackageTree: TTreeView;
+    Panel8: TPanel;
+    TabSheetPackage: TTabSheet;
     UseAndCloseButton: TBitBtn;
     ButtonPanel: TPanel;
     LabelSearch: TLabel;
@@ -58,7 +61,9 @@ type
     InheritanceTree: TTreeView;
     PalletteTree: TTreeView;
     TreeFilterEd: TTreeFilterEdit;
+    XMLConfig1: TXMLConfig;
     procedure FormShow(Sender: TObject);
+    procedure SelectedTreeChange(Sender: TObject; Node: TTreeNode);
     procedure UseAndCloseButtonClick(Sender: TObject);
     procedure ComponentsDblClick(Sender: TObject);
     procedure ComponentsClick(Sender: TObject);
@@ -111,6 +116,7 @@ begin
   ListTree.DefaultItemHeight       := ComponentPaletteImageHeight + 1;
   InheritanceTree.DefaultItemHeight:= ComponentPaletteImageHeight + 1;
   PalletteTree.DefaultItemHeight   := ComponentPaletteImageHeight + 1;
+  PackageTree.DefaultItemHeight    := ComponentPaletteImageHeight + 1;
   PrevPageIndex := -1;
   PageControl.ActivePage := TabSheetList;
   FindAllLazarusComponents;
@@ -147,6 +153,12 @@ begin
     PageControl.AnchorSideBottom.Side := asrBottom;
 end;
 
+procedure TComponentListForm.SelectedTreeChange(Sender: TObject; Node: TTreeNode
+  );
+begin
+  ComponentsClick(Sender);
+end;
+
 procedure TComponentListForm.ClearSelection;
 begin
   ListTree.Selected := Nil;
@@ -171,7 +183,13 @@ begin
   begin
     if Assigned(InheritanceTree.Selected) then
       Result := TRegisteredComponent(InheritanceTree.Selected.Data);
+  end
+  else if PackageTree.IsVisible then
+  begin
+    if Assigned(PackageTree.Selected) then
+      Result := TRegisteredComponent(PackageTree.Selected.Data);
   end;
+
 end;
 
 procedure TComponentListForm.ComponentWasAdded;
@@ -213,6 +231,7 @@ procedure TComponentListForm.UpdateComponentSelection(Sender: TObject);
 var
   AComponent: TRegisteredComponent;
   AClassName: string;
+  LPKname   : string;
   AClassList, List: TStringList;
   i, j, AIndex: Integer;
   ANode: TTreeNode;
@@ -304,6 +323,27 @@ begin
       InheritanceTree.Items.EndUpdate;
     end;
     
+    //Fourth tabsheet (package layout)
+    PackageTree.BeginUpdate;
+    try
+      PackageTree.Items.Clear;
+      for i := 0 to FComponentList.Count-1 do
+      begin
+        AComponent := FComponentList[i];
+        AClassName := AComponent.ComponentClass.ClassName;
+        //find out parent node
+        LPKname := TPkgComponent(AComponent).PkgFile.LazPackage.Name;
+        ANode := PackageTree.Items.FindTopLvlNode(LPKname);
+        if ANode = nil then
+          ANode := PackageTree.Items.AddChild(nil, LPKname);
+        //add the item
+        ANode := PackageTree.Items.AddChildObject(ANode, AClassName, AComponent);
+      end;
+      PackageTree.FullExpand;
+    finally
+      PackageTree.EndUpdate;
+    end;
+
   finally
     Screen.Cursor := crDefault;
   end;
@@ -423,6 +463,7 @@ begin
     0: TreeFilterEd.FilteredTreeview := ListTree;
     1: TreeFilterEd.FilteredTreeview := PalletteTree;
     2: TreeFilterEd.FilteredTreeview := InheritanceTree;
+    3: TreeFilterEd.FilteredTreeview := PackageTree;
   end;
   TreeFilterEd.InvalidateFilter;
   PrevPageIndex := PageControl.PageIndex;

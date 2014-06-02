@@ -849,6 +849,11 @@ var
           ShowHint := EnvironmentOptions.ShowHintsForComponentPalette;
           Hint := aComp.ComponentClass.ClassName + sLineBreak
             + '(' + aComp.ComponentClass.UnitName + ')';
+          if (aComp is TPkgComponent) and Assigned(aComp.PkgFile) then
+          begin
+            Hint := Hint + sLineBreak + '['+aComp.PkgFile.LazPackage.Name+']';
+          end;
+
           CurBtn.PopupMenu:=Self.PopupMenu;
         end;
         //debugln(['TComponentPalette.UpdateNoteBookButtons Created Button: ',aComp.ComponentClass.ClassName,' ',aComp.Button.Name]);
