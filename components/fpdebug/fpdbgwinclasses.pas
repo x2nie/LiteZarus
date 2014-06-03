@@ -135,6 +135,11 @@ procedure RegisterDbgClasses;
 
 implementation
 
+{$ifdef cpux86_64}
+const
+  FLAG_TRACE_BIT = $100;
+{$endif}
+
 procedure RegisterDbgClasses;
 begin
   OSDbgClasses.DbgThreadClass:=TDbgWinThread;
@@ -239,7 +244,7 @@ end;
 
 function TDbgWinProcess.ReadData(const AAdress: TDbgPtr; const ASize: Cardinal; out AData): Boolean;
 var
-  BytesRead: Cardinal;
+  BytesRead: PtrUInt;
 begin
   Result := ReadProcessMemory(Handle, Pointer(PtrUInt(AAdress)), @AData, ASize, BytesRead) and (BytesRead = ASize);
 
@@ -249,7 +254,7 @@ end;
 
 function TDbgWinProcess.WriteData(const AAdress: TDbgPtr; const ASize: Cardinal; const AData): Boolean;
 var
-  BytesWritten: Cardinal;
+  BytesWritten: PtrUInt;
 begin
   Result := WriteProcessMemory(Handle, Pointer(PtrUInt(AAdress)), @AData, ASize, BytesWritten) and (BytesWritten = ASize);
 
@@ -258,7 +263,7 @@ end;
 
 function TDbgWinProcess.ReadString(const AAdress: TDbgPtr; const AMaxSize: Cardinal; out AData: String): Boolean;
 var
-  BytesRead: Cardinal;
+  BytesRead: PtrUInt;
   buf: array of Char;
 begin
   SetLength(buf, AMaxSize + 1);
@@ -272,7 +277,7 @@ end;
 
 function TDbgWinProcess.ReadWString(const AAdress: TDbgPtr; const AMaxSize: Cardinal; out AData: WideString): Boolean;
 var
-  BytesRead: Cardinal;
+  BytesRead: PtrUInt;
   buf: array of WChar;
 begin
   SetLength(buf, AMaxSize + 1);
@@ -449,11 +454,6 @@ end;
 
 function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
 
-  procedure HandleCreateThread(const AEvent: TDebugEvent);
-  begin
-    DebugLn(Format('Start adress: 0x%p', [AEvent.CreateThread.lpStartAddress]));
-  end;
-
   procedure HandleException(const AEvent: TDebugEvent);
   const
     PARAMCOLS = 12 - SizeOf(Pointer);
@@ -466,10 +466,13 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
     ExInfo32: TExceptionDebugInfo32 absolute AEvent.Exception;
     ExInfo64: TExceptionDebugInfo64 absolute AEvent.Exception;
   begin
+    // Kept the debug-output as comments, since they provide deeper information
+    // on how to interprete the exception-information.
+    {
     if AEvent.Exception.dwFirstChance = 0
     then DebugLn('Exception: ')
     else DebugLn('First chance exception: ');
-
+    }
     // in both 32 and 64 case is the exceptioncode the first, so no difference
     case AEvent.Exception.ExceptionRecord.ExceptionCode of
       EXCEPTION_ACCESS_VIOLATION         : ExceptionClass:='ACCESS VIOLATION';
@@ -509,6 +512,7 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
       }
     else
       ExceptionClass := 'Unknown exception code $' + IntToHex(ExInfo32.ExceptionRecord.ExceptionCode, 8);
+      {
       DebugLn(' [');
       case ExInfo32.ExceptionRecord.ExceptionCode and $C0000000 of
         STATUS_SEVERITY_SUCCESS       : DebugLn('SEVERITY_ERROR');
@@ -536,11 +540,11 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
         DebugLn(' Facility: $', IntToHex((ExInfo32.ExceptionRecord.ExceptionCode and $0FFF0000) shr 16, 3));
       end;
       DebugLn(' Code: $', IntToHex((ExInfo32.ExceptionRecord.ExceptionCode and $0000FFFF), 4));
-
+      }
     end;
     ExceptionClass:='External: '+ExceptionClass;
-    DebugLn(ExceptionClass);
     ExceptionMessage:='';
+    {
     if GMode = dm32
     then Info0 := PtrUInt(ExInfo32.ExceptionRecord.ExceptionAddress)
     else Info0 := PtrUInt(ExInfo64.ExceptionRecord.ExceptionAddress);
@@ -554,7 +558,7 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
     if GMode = dm32
     then DebugLn(' ParamCount:', IntToStr(ExInfo32.ExceptionRecord.NumberParameters))
     else DebugLn(' ParamCount:', IntToStr(ExInfo64.ExceptionRecord.NumberParameters));
-
+    }
     case AEvent.Exception.ExceptionRecord.ExceptionCode of
       EXCEPTION_ACCESS_VIOLATION: begin
         if GMode = dm32
@@ -575,7 +579,7 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
         end;
       end;
     end;
-
+    {
     DebugLn(' Info: ');
     for n := 0 to EXCEPTION_MAXIMUM_PARAMETERS - 1 do
     begin
@@ -590,25 +594,7 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
       end;
     end;
     DebugLn('');
-  end;
-
-  procedure HandleCreateProcess(const AEvent: TDebugEvent);
-  var
-    S: String;
-  begin
-    DebugLn(Format('hFile: 0x%x', [AEvent.CreateProcessInfo.hFile]));
-    DebugLn(Format('hProcess: 0x%x', [AEvent.CreateProcessInfo.hProcess]));
-    DebugLn(Format('hThread: 0x%x', [AEvent.CreateProcessInfo.hThread]));
-    DebugLn('Base adress: ', FormatAddress(AEvent.CreateProcessInfo.lpBaseOfImage));
-    DebugLn(Format('Debugsize: %d', [AEvent.CreateProcessInfo.nDebugInfoSize]));
-    DebugLn(Format('Debugoffset: %d', [AEvent.CreateProcessInfo.dwDebugInfoFileOffset]));
-
-    StartProcess(AEvent.dwThreadId, AEvent.CreateProcessInfo);
-  end;
-
-  procedure HandleExitThread(const AEvent: TDebugEvent);
-  begin
-    DebugLn('Exitcode: ' + IntToStr(AEvent.ExitThread.dwExitCode));
+    }
   end;
 
   procedure DumpEvent(const AEvent: String);
@@ -697,14 +683,6 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
   {$POP}
   end;
 
-  procedure HandleLoadDll(const AEvent: TDebugEvent);
-  var
-    Proc: TDbgProcess;
-    Lib: TDbgLibrary;
-  begin
-    DebugLn('Base adress: ', FormatAddress(AEvent.LoadDll.lpBaseOfDll));
-  end;
-
   procedure HandleOutputDebug(const AEvent: TDebugEvent);
   var
     S: String;
@@ -723,17 +701,6 @@ function TDbgWinProcess.ResolveDebugEvent(AThread: TDbgThread): TFPDEvent;
     DebugLn('[', IntToStr(AEvent.dwProcessId), ':', IntToSTr(AEvent.dwThreadId), '] ', S);
   end;
 
-  procedure HandleRipEvent(const AEvent: TDebugEvent);
-  begin
-    DebugLn('Error: ', IntToStr(AEvent.RipInfo.dwError));
-    DebugLn('Type: ', IntToStr(AEvent.RipInfo.dwType));
-  end;
-
-  procedure HandleUnloadDll(const AEvent: TDebugEvent);
-  begin
-    DebugLn('Base adress: ', FormatAddress(AEvent.UnloadDll.lpBaseOfDll));
-  end;
-
 begin
   if HandleDebugEvent(MDebugEvent)
   then result := deBreakpoint
@@ -750,7 +717,7 @@ begin
 
     case MDebugEvent.dwDebugEventCode of
       EXCEPTION_DEBUG_EVENT: begin
-        DumpEvent('EXCEPTION_DEBUG_EVENT');
+        //DumpEvent('EXCEPTION_DEBUG_EVENT');
         case MDebugEvent.Exception.ExceptionRecord.ExceptionCode of
           EXCEPTION_BREAKPOINT: begin
             if DoBreak(TDbgPtr(MDebugEvent.Exception.ExceptionRecord.ExceptionAddress), MDebugEvent.dwThreadId)
@@ -819,43 +786,38 @@ begin
         end;
       end;
       CREATE_THREAD_DEBUG_EVENT: begin
-        DumpEvent('CREATE_THREAD_DEBUG_EVENT');
-        HandleCreateThread(MDebugEvent);
+        //DumpEvent('CREATE_THREAD_DEBUG_EVENT');
         result := deInternalContinue;
       end;
       CREATE_PROCESS_DEBUG_EVENT: begin
-        DumpEvent('CREATE_PROCESS_DEBUG_EVENT');
-        HandleCreateProcess(MDebugEvent);
+        //DumpEvent('CREATE_PROCESS_DEBUG_EVENT');
+        StartProcess(MDebugEvent.dwThreadId, MDebugEvent.CreateProcessInfo);
         result := deCreateProcess;
       end;
       EXIT_THREAD_DEBUG_EVENT: begin
-        DumpEvent('EXIT_THREAD_DEBUG_EVENT');
-        HandleExitThread(MDebugEvent);
+        //DumpEvent('EXIT_THREAD_DEBUG_EVENT');
         result := deInternalContinue;
       end;
       EXIT_PROCESS_DEBUG_EVENT: begin
-        DumpEvent('EXIT_PROCESS_DEBUG_EVENT');
+        //DumpEvent('EXIT_PROCESS_DEBUG_EVENT');
         SetExitCode(MDebugEvent.ExitProcess.dwExitCode);
         result := deExitProcess;
       end;
       LOAD_DLL_DEBUG_EVENT: begin
-        DumpEvent('LOAD_DLL_DEBUG_EVENT');
-        HandleLoadDll(MDebugEvent);
+        //DumpEvent('LOAD_DLL_DEBUG_EVENT');
         result := deLoadLibrary;
       end;
       UNLOAD_DLL_DEBUG_EVENT: begin
-        DumpEvent('UNLOAD_DLL_DEBUG_EVENT');
-        HandleUnloadDll(MDebugEvent);
+        //DumpEvent('UNLOAD_DLL_DEBUG_EVENT');
         result := deInternalContinue;
       end;
       OUTPUT_DEBUG_STRING_EVENT: begin
-        DumpEvent('OUTPUT_DEBUG_STRING_EVENT');
+        //DumpEvent('OUTPUT_DEBUG_STRING_EVENT');
         HandleOutputDebug(MDebugEvent);
         result := deInternalContinue;
       end;
       RIP_EVENT: begin
-        DumpEvent('RIP_EVENT');
-        HandleRipEvent(MDebugEvent);
+        //DumpEvent('RIP_EVENT');
         result := deInternalContinue;
       end
       else begin
@@ -899,7 +861,7 @@ begin
 {$ifdef cpui386}
   Result := GCurrentContext^.Ebp;
 {$else}
-  Result := GCurrentContext^.Rdi;
+  Result := GCurrentContext^.Rbp;
 {$endif}
 end;
 
@@ -908,7 +870,7 @@ begin
 {$ifdef cpui386}
   Result := GCurrentContext^.Esp;
 {$else}
-//  Result := GCurrentContext^.Rdi;
+  Result := GCurrentContext^.Rsp;
 {$endif}
 end;
 
@@ -1007,20 +969,40 @@ begin
     FRegisterValueList.DbgRegisterAutoCreate['fs'].SetValue(SegFs, IntToStr(SegFs),4,0);
     FRegisterValueList.DbgRegisterAutoCreate['gs'].SetValue(SegGs, IntToStr(SegGs),4,0);
   end;
-  FRegisterValueListValid:=true;
 {$else}
-  FRegisterValueListValid := False;
-  {$warning register not ready for 64 bit}
+  with GCurrentContext^ do
+  begin
+    FRegisterValueList.DbgRegisterAutoCreate['rax'].SetValue(rax, IntToStr(rax),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['rcx'].SetValue(rcx, IntToStr(rcx),4,1);
+    FRegisterValueList.DbgRegisterAutoCreate['rdx'].SetValue(rdx, IntToStr(rdx),4,2);
+    FRegisterValueList.DbgRegisterAutoCreate['rbx'].SetValue(rbx, IntToStr(rbx),4,3);
+    FRegisterValueList.DbgRegisterAutoCreate['rsp'].SetValue(rsp, IntToStr(rsp),4,4);
+    FRegisterValueList.DbgRegisterAutoCreate['rbp'].SetValue(rbp, IntToStr(rbp),4,5);
+    FRegisterValueList.DbgRegisterAutoCreate['rsi'].SetValue(rsi, IntToStr(rsi),4,6);
+    FRegisterValueList.DbgRegisterAutoCreate['rdi'].SetValue(rdi, IntToStr(rdi),4,7);
+    FRegisterValueList.DbgRegisterAutoCreate['rip'].SetValue(rip, IntToStr(rip),4,8);
+
+    FRegisterValueList.DbgRegisterAutoCreate['eflags'].Setx86EFlagsValue(EFlags);
+
+    FRegisterValueList.DbgRegisterAutoCreate['cs'].SetValue(SegCs, IntToStr(SegCs),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r8'].SetValue(r8, IntToStr(r8),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r9'].SetValue(r9, IntToStr(r9),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r10'].SetValue(r10, IntToStr(r10),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r11'].SetValue(r11, IntToStr(r11),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r12'].SetValue(r12, IntToStr(r12),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r13'].SetValue(r13, IntToStr(r13),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r14'].SetValue(r14, IntToStr(r14),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['r15'].SetValue(r15, IntToStr(r15),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['fs'].SetValue(SegFs, IntToStr(SegFs),4,0);
+    FRegisterValueList.DbgRegisterAutoCreate['gs'].SetValue(SegGs, IntToStr(SegGs),4,0);
+  end;
 {$endif}
+  FRegisterValueListValid:=true;
 end;
 
 procedure TDbgWinThread.SetSingleStep;
 begin
-{$ifdef cpui386}
   GCurrentContext^.EFlags := GCurrentContext^.EFlags or FLAG_TRACE_BIT;
-{$else}
-  {$warning singlestep not ready for 64 bit}
-{$endif}
   FThreadContextChanged:=true;
 end;
 
@@ -1028,7 +1010,7 @@ function TDbgWinThread.AddWatchpoint(AnAddr: TDBGPtr): integer;
 var
   i: integer;
 
-  function SetBreakpoint(var dr: DWORD; ind: byte): boolean;
+  function SetBreakpoint(var dr: {$ifdef cpui386}DWORD{$else}DWORD64{$endif}; ind: byte): boolean;
   begin
     if (Dr=0) and ((GCurrentContext^.Dr7 and (1 shl ind))=0) then
     begin
@@ -1044,7 +1026,6 @@ var
 
 begin
   result := -1;
-{$ifdef cpui386}
   if SetBreakpoint(GCurrentContext^.Dr0, 0) then
     result := 0
   else if SetBreakpoint(GCurrentContext^.Dr1, 1) then
@@ -1055,15 +1036,11 @@ begin
     result := 3
   else
     Process.Log('No hardware breakpoint available.');
-{$else}
-  FRegisterValueListValid := False;
-  {$warning watchpoint not ready for 64 bit}
-{$endif}
 end;
 
 function TDbgWinThread.RemoveWatchpoint(AnId: integer): boolean;
 
-  function RemoveBreakpoint(var dr: DWORD; ind: byte): boolean;
+  function RemoveBreakpoint(var dr: {$ifdef cpui386}DWORD{$else}DWORD64{$endif}; ind: byte): boolean;
   begin
     if (Dr<>0) and ((GCurrentContext^.Dr7 and (1 shl (ind*2)))<>0) then
     begin
@@ -1081,17 +1058,12 @@ function TDbgWinThread.RemoveWatchpoint(AnId: integer): boolean;
   end;
 
 begin
-{$ifdef cpui386}
   case AnId of
     0: result := RemoveBreakpoint(GCurrentContext^.Dr0, 0);
     1: result := RemoveBreakpoint(GCurrentContext^.Dr1, 1);
     2: result := RemoveBreakpoint(GCurrentContext^.Dr2, 2);
     3: result := RemoveBreakpoint(GCurrentContext^.Dr3, 3);
   end
-{$else}
-  FRegisterValueListValid := False;
-  {$warning watchpoint not ready for 64 bit}
-{$endif}
 end;
 
 procedure TDbgWinThread.BeforeContinue;
@@ -1144,6 +1116,7 @@ begin
   dec(GCurrentContext^.Eip);
   {$else}
   Dec(Context^.Rip);
+  dec(GCurrentContext^.Rip);
   {$endif}
 
   if not SetThreadContext(Handle, Context^)

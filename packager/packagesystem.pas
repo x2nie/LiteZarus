@@ -52,7 +52,10 @@ uses
   BasicCodeTools, CodeToolsStructs, NonPascalCodeTools, SourceChanger,
   CodeToolManager, DirectoryCacher,
   // IDEIntf,
-  SrcEditorIntf, IDEExternToolIntf, IDEDialogs, IDEMsgIntf, PackageIntf,
+  {$IFNDEF EnableNewExtTools}
+  SrcEditorIntf,
+  {$ENDIF}
+  IDEExternToolIntf, IDEDialogs, IDEMsgIntf, PackageIntf,
   CompOptsIntf, LazIDEIntf, MacroDefIntf,
   // package registration
   LazarusPackageIntf,
@@ -413,6 +416,7 @@ function ExtractFPCParamsForBuildAll(const CompParams: string): string;
 function ExtractSearchPathsFromFPCParams(const CompParams: string;
   CreateReduced: boolean = false;
   BaseDir: string = ''; MakeRelative: boolean = false): TStringList;
+function RemoveFPCVerbosityParams(const CompParams: string): string;
 
 implementation
 
@@ -438,7 +442,16 @@ function ExtractFPCParamsForBuildAll(const CompParams: string): string;
 { Some compiler flags require a clean build -B, because the compiler
   does not recompile/update some ppu itself.
   Remove all flags that do not require build all:
-  -l -F -B -e -i -o -s -v }
+  -l  logo
+  -F  file name and paths
+  -B  build all
+  -e  executable
+  -i  information
+  -o  name of the executable
+  -s  quick build option, do not call assembler and linker
+  -v  verbosity
+  -X  Executable
+  }
 var
   EndPos: Integer;
   StartPos: integer;
@@ -448,11 +461,11 @@ begin
   while ReadNextFPCParameter(Result,EndPos,StartPos) do begin
     if (Result[StartPos]='-') and (StartPos<length(Result)) then begin
       case Result[StartPos+1] of
-      'l','F','B','e','i','o','s','v':
+      'l','F','B','e','i','o','s','v','X':
         begin
           while (StartPos>1) and (Result[StartPos-1] in [' ',#9]) do
             dec(StartPos);
-          //DebugLn(['TLazPackageGraph.ExtractFPCParamsForBuildAll Removing: ',copy(Result,StartPos,EndPos-StartPos)]);
+          //DebugLn(['ExtractFPCParamsForBuildAll Removing: ',copy(Result,StartPos,EndPos-StartPos)]);
           while (EndPos<=length(Result)) and (Result[EndPos] in [' ',#9]) do
             inc(EndPos);
           System.Delete(Result,StartPos,EndPos-StartPos);
@@ -482,6 +495,7 @@ var
   begin
     while (EndPos<=length(Reduced)) and (Reduced[EndPos] in [' ',#9]) do
       inc(EndPos);
+    //debugln(['DeleteOption "',copy(Reduced,StartPos,EndPos-StartPos),'"']);
     System.Delete(Reduced,StartPos,EndPos-StartPos);
     EndPos:=StartPos;
   end;
@@ -533,6 +547,34 @@ begin
   end;
   if CreateReduced then
     AllPaths.Values['Reduced']:=Reduced;
+end;
+
+function RemoveFPCVerbosityParams(const CompParams: string): string;
+{ Some compiler flags have no impact on the produced files.
+  Remove all flags that do not require a rebuild:
+  -l -B -i -v }
+var
+  EndPos: Integer;
+  StartPos: integer;
+begin
+  Result:=CompParams;
+  EndPos:=1;
+  while ReadNextFPCParameter(Result,EndPos,StartPos) do begin
+    if (Result[StartPos]='-') and (StartPos<length(Result)) then begin
+      case Result[StartPos+1] of
+      'l','B','i','v':
+        begin
+          while (StartPos>1) and (Result[StartPos-1] in [' ',#9]) do
+            dec(StartPos);
+          //DebugLn(['ExtractFPCVerbosityParams Removing: ',copy(Result,StartPos,EndPos-StartPos)]);
+          while (EndPos<=length(Result)) and (Result[EndPos] in [' ',#9]) do
+            inc(EndPos);
+          System.Delete(Result,StartPos,EndPos-StartPos);
+          EndPos:=StartPos;
+        end;
+      end;
+    end;
+  end;
 end;
 
 { TLazPackageGraph }
@@ -3042,6 +3084,8 @@ var
   AFilename: String;
   CompilerFilename, CompilerParams, SrcFilename: string;
   LFMFilename: String;
+  ReducedParams: String;
+  ReducedLastParams: String;
 begin
   Result:=mrYes;
   {$IFDEF VerbosePkgCompile}
@@ -3150,18 +3194,22 @@ begin
       CurPaths.Free;
       LastPaths.Free;
     end;
-  end else if CompilerParams<>LastParams then begin
-    // package was compiled by Lazarus
-    DebugLn('TLazPackageGraph.CheckIfCurPkgOutDirNeedsCompile  Compiler params changed for ',APackage.IDAsString);
-    DebugLn('  Old="',dbgstr(LastParams),'"');
-    DebugLn('  Now="',dbgstr(CompilerParams),'"');
-    DebugLn('  State file="',Stats^.StateFileName,'"');
-    Note+='Compiler parameters changed:'+LineEnding
-       +'  Old="'+dbgstr(LastParams)+'"'+LineEnding
-       +'  Now="'+dbgstr(CompilerParams)+'"'+LineEnding
-       +'  State file="'+Stats^.StateFileName+'"'+LineEnding;
-    ConfigChanged:=true;
-    exit(mrYes);
+  end else begin
+    ReducedParams:=RemoveFPCVerbosityParams(CompilerParams);
+    ReducedLastParams:=RemoveFPCVerbosityParams(CompilerParams);
+    if ReducedParams<>ReducedLastParams then begin
+      // package was compiled by Lazarus
+      DebugLn('TLazPackageGraph.CheckIfCurPkgOutDirNeedsCompile  Compiler params changed for ',APackage.IDAsString);
+      DebugLn('  Old="',dbgstr(ReducedLastParams),'"');
+      DebugLn('  Now="',dbgstr(ReducedParams),'"');
+      DebugLn('  State file="',Stats^.StateFileName,'"');
+      Note+='Compiler parameters changed:'+LineEnding
+         +'  Old="'+dbgstr(ReducedLastParams)+'"'+LineEnding
+         +'  Now="'+dbgstr(ReducedParams)+'"'+LineEnding
+         +'  State file="'+Stats^.StateFileName+'"'+LineEnding;
+      ConfigChanged:=true;
+      exit(mrYes);
+    end;
   end;
   if (not Stats^.ViaMakefile)
   and (CompilerFilename<>Stats^.CompilerFilename) then begin
@@ -3523,38 +3571,43 @@ begin
 
         {$IFDEF EnableNewExtTools}
         PkgCompileTool:=ExternalToolList.Add(Format(lisPkgMangCompilingPackage, [APackage.IDAsString]));
-        FPCParser:=TFPCParser(PkgCompileTool.AddParsers(SubToolFPC));
-        //debugln(['TLazPackageGraph.CompilePackage ',APackage.Name,' ',APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc,' ',APackage.MainUnit.Filename]);
-        if (APackage.MainUnit<>nil)
-        and (not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc) then
-          FPCParser.FilesToIgnoreUnitNotUsed.Add(APackage.MainUnit.Filename);
-        FPCParser.HideHintsSenderNotUsed:=not APackage.CompilerOptions.ShowHintsForSenderNotUsed;
-        FPCParser.HideHintsUnitNotUsedInMainSource:=not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
-        PkgCompileTool.AddParsers(SubToolMake);
-        PkgCompileTool.Process.CurrentDirectory:=APackage.Directory;
-        PkgCompileTool.Process.Executable:=CompilerFilename;
-        PkgCompileTool.CmdLineParams:=EffectiveCompilerParams;
-        PkgCompileTool.Hint:=Note;
-        PkgCompileTool.Data:=TIDEExternalToolData.Create(IDEToolCompilePackage,
-          APackage.Name,APackage.Filename);
-        PkgCompileTool.FreeData:=true;
-        // run
-        PkgCompileTool.Execute;
-        PkgCompileTool.WaitForExit;
+        PkgCompileTool.Reference(Self,Classname);
+        try
+          FPCParser:=TFPCParser(PkgCompileTool.AddParsers(SubToolFPC));
+          //debugln(['TLazPackageGraph.CompilePackage ',APackage.Name,' ',APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc,' ',APackage.MainUnit.Filename]);
+          if (APackage.MainUnit<>nil)
+          and (not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc) then
+            FPCParser.FilesToIgnoreUnitNotUsed.Add(APackage.MainUnit.Filename);
+          FPCParser.HideHintsSenderNotUsed:=not APackage.CompilerOptions.ShowHintsForSenderNotUsed;
+          FPCParser.HideHintsUnitNotUsedInMainSource:=not APackage.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
+          PkgCompileTool.AddParsers(SubToolMake);
+          PkgCompileTool.Process.CurrentDirectory:=APackage.Directory;
+          PkgCompileTool.Process.Executable:=CompilerFilename;
+          PkgCompileTool.CmdLineParams:=EffectiveCompilerParams;
+          PkgCompileTool.Hint:=Note;
+          PkgCompileTool.Data:=TIDEExternalToolData.Create(IDEToolCompilePackage,
+            APackage.Name,APackage.Filename);
+          PkgCompileTool.FreeData:=true;
+          // run
+          PkgCompileTool.Execute;
+          PkgCompileTool.WaitForExit;
 
-        // check if main ppu file was created
-        SrcPPUFile:=APackage.GetSrcPPUFilename;
-        SrcPPUFileExists:=(SrcPPUFile<>'') and FileExistsUTF8(SrcPPUFile);
-        // write state file
-        Result:=SavePackageCompiledState(APackage,
-                          CompilerFilename,CompilerParams,
-                          PkgCompileTool.ErrorMessage='',SrcPPUFileExists,true);
-        if Result<>mrOk then begin
-          DebugLn(['TLazPackageGraph.CompilePackage SavePackageCompiledState failed: ',APackage.IDAsString]);
-          exit;
+          // check if main ppu file was created
+          SrcPPUFile:=APackage.GetSrcPPUFilename;
+          SrcPPUFileExists:=(SrcPPUFile<>'') and FileExistsUTF8(SrcPPUFile);
+          // write state file
+          Result:=SavePackageCompiledState(APackage,
+                            CompilerFilename,CompilerParams,
+                            PkgCompileTool.ErrorMessage='',SrcPPUFileExists,true);
+          if Result<>mrOk then begin
+            DebugLn(['TLazPackageGraph.CompilePackage SavePackageCompiledState failed: ',APackage.IDAsString]);
+            exit;
+          end;
+          if PkgCompileTool.ErrorMessage<>'' then
+            exit(mrCancel);
+        finally
+          PkgCompileTool.Release(Self);
         end;
-        if PkgCompileTool.ErrorMessage<>'' then
-          exit(mrCancel);
 
         {$ELSE}
         PkgCompileTool:=TIDEExternalToolOptions.Create;

@@ -19,8 +19,8 @@ msgstr "Помилка розбору файлу стека викликів"
 
 #: heaptrcview.rsleakview
 #, fuzzy
-#| msgid "Leak View"
-msgid "Find source lines for leak/stack-traces"
+#| msgid "Find source lines for leak/stack-traces"
+msgid "Leaks and Traces"
 msgstr "Перегляд витоків пам'яті"
 
 #: heaptrcview.sbtnclipbrd
@@ -44,7 +44,9 @@ msgid "Stay on top"
 msgstr "Поверх інших вікон"
 
 #: heaptrcview.sfrmcap
-msgid "LeakView - HeapTrc output viewer"
+#, fuzzy
+#| msgid "LeakView - HeapTrc output viewer"
+msgid "Leaks and Traces - HeapTrc and GDB backtrace output viewer"
 msgstr "LeakView - програма перегляду виводу HeapTrc"
 
 #: heaptrcview.sfrmselectfilewithdebuginfo

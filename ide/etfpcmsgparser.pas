@@ -25,6 +25,8 @@
 }
 unit etFPCMsgParser;
 
+{$IFNDEF EnableNewExtTools}{$ERROR Wrong}{$ENDIF}
+
 {$mode objfpc}{$H+}
 
 {off $DEFINE VerboseQuickFixUnitNotFoundPosition}
@@ -46,6 +48,7 @@ const
   FPCMsgIDErrorWhileCompilingResources = 9029;
   FPCMsgIDCallingResourceCompiler = 9028;
   FPCMsgIDThereWereErrorsCompiling = 10026;
+  FPCMsgIDIdentifierNotFound = 5000;
 
   FPCMsgAttrWorkerDirectory = 'WD';
   FPCMsgAttrMissingUnit = 'MissingUnit';
@@ -99,7 +102,7 @@ type
       AThread: TThread): TFPCMsgFilePoolItem; // don't forget UnloadFile
     function LoadFile(aFilename: string; UpdateFromDisk: boolean;
       AThread: TThread): TFPCMsgFilePoolItem; // don't forget UnloadFile
-    procedure UnloadFile(var aFile: TFPCMsgFilePoolItem; AThread: TThread);
+    procedure UnloadFile(var aFile: TFPCMsgFilePoolItem);
     procedure EnterCriticalsection;
     procedure LeaveCriticalSection;
     procedure GetMsgFileNames(CompilerFilename, TargetOS, TargetCPU: string;
@@ -150,6 +153,7 @@ type
     fMsgItemCantFindUnitUsedBy: TFPCMsgItem;
     fMsgItemCompilationAborted: TFPCMsgItem;
     fMsgItemThereWereErrorsCompiling: TFPCMsgItem;
+    fMsgItemIdentifierNotFound: TFPCMsgItem;
     fMsgItemErrorWhileLinking: TFPCMsgItem;
     fMsgItemErrorWhileCompilingResources: TFPCMsgItem;
     fMissingFPCMsgItem: TFPCMsgItem;
@@ -199,7 +203,7 @@ type
       var Item: TFPCMsgItem): boolean;
     class function IsSubTool(const SubTool: string): boolean; override;
     class function DefaultSubTool: string; override;
-    class function GetMsgExample(SubTool: string; MsgID: integer): string;
+    class function GetMsgPattern(SubTool: string; MsgID: integer): string;
       override;
     class function GetMsgHint(SubTool: string; MsgID: integer): string;
       override;
@@ -880,8 +884,7 @@ begin
   end;
 end;
 
-procedure TFPCMsgFilePool.UnloadFile(var aFile: TFPCMsgFilePoolItem;
-  AThread: TThread);
+procedure TFPCMsgFilePool.UnloadFile(var aFile: TFPCMsgFilePoolItem);
 var
   i: Integer;
   Item: TFPCMsgFilePoolItem;
@@ -1011,9 +1014,9 @@ begin
   FreeAndNil(fFileExists);
   FreeAndNil(fLastSource);
   if TranslationFile<>nil then
-    FPCMsgFilePool.UnloadFile(TranslationFile,nil);
+    FPCMsgFilePool.UnloadFile(TranslationFile);
   if MsgFile<>nil then
-    FPCMsgFilePool.UnloadFile(MsgFile,nil);
+    FPCMsgFilePool.UnloadFile(MsgFile);
   FreeAndNil(DirectoryStack);
   FreeAndNil(fLineToMsgID);
   inherited Destroy;
@@ -2225,7 +2228,10 @@ begin
   else if IsMsgID(MsgLine,FPCMsgIDThereWereErrorsCompiling,
     fMsgItemThereWereErrorsCompiling)
   then
-    MsgLine.Urgency:=mluVerbose;
+    MsgLine.Urgency:=mluVerbose
+  else if IsMsgID(MsgLine,FPCMsgIDIdentifierNotFound,fMsgItemIdentifierNotFound)
+  then
+    MsgLine.Flags:=MsgLine.Flags+[mlfLeftToken];
   inherited AddMsgLine(MsgLine);
 end;
 
@@ -2379,12 +2385,12 @@ begin
       if MsgItem=nil then exit;
       Result:=MsgItem.GetTrimmedComment(false,true);
     finally
-      FPCMsgFilePool.UnloadFile(CurMsgFile,nil);
+      FPCMsgFilePool.UnloadFile(CurMsgFile);
     end;
   end;
 end;
 
-class function TIDEFPCParser.GetMsgExample(SubTool: string; MsgID: integer
+class function TIDEFPCParser.GetMsgPattern(SubTool: string; MsgID: integer
   ): string;
 var
   CurMsgFile: TFPCMsgFilePoolItem;
@@ -2400,7 +2406,7 @@ begin
       if MsgItem=nil then exit;
       Result:=MsgItem.Pattern;
     finally
-      FPCMsgFilePool.UnloadFile(CurMsgFile,nil);
+      FPCMsgFilePool.UnloadFile(CurMsgFile);
     end;
   end;
 end;
@@ -2433,9 +2439,10 @@ begin
   Value1:='';
   Value2:='';
   if Msg=nil then exit(false);
-  if Msg.MsgID=MsgId then exit(true);
-  if Msg.MsgID<>0 then exit(false);
   if Msg.SubTool<>SubToolFPC then exit(false);
+  if (Msg.MsgID<>MsgId)
+  and (Msg.MsgID<>0) then exit(false);
+  Result:=true;
   aFPCParser:=GetFPCParser(Msg);
   if aFPCParser=nil then exit;
   Pattern:=aFPCParser.GetFPCMsgIDPattern(MsgId);

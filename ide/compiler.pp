@@ -43,9 +43,9 @@ uses
   {$IFDEF EnableNewExtTools}
   IDEExternToolIntf,
   {$ELSE}
-  OutputFilter,
+  UTF8Process, OutputFilter,
   {$ENDIF}
-  UTF8Process, InfoBuild, IDEMsgIntf, CompOptsIntf, LazIDEIntf,
+  InfoBuild, IDEMsgIntf, CompOptsIntf, LazIDEIntf,
   DefineTemplates, TransferMacros, EnvironmentOpts, LazFileUtils;
 
 type
@@ -322,21 +322,26 @@ begin
 
   {$IFDEF EnableNewExtTools}
   Tool:=ExternalToolList.Add('Compile Project');
-  Tool.Hint:=aCompileHint;
-  Tool.Process.Executable:=CompilerFilename;
-  Tool.CmdLineParams:=CmdLine;
-  Tool.Process.CurrentDirectory:=WorkingDir;
-  FPCParser:=TFPCParser(Tool.AddParsers(SubToolFPC));
-  FPCParser.HideHintsSenderNotUsed:=not AProject.CompilerOptions.ShowHintsForSenderNotUsed;
-  FPCParser.HideHintsUnitNotUsedInMainSource:=not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
-  if (not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc)
-  and (AProject.MainFilename<>'') then
-    FPCParser.FilesToIgnoreUnitNotUsed.Add(AProject.MainFilename);
-  Tool.AddParsers(SubToolMake);
-  Tool.Execute;
-  Tool.WaitForExit;
-  if Tool.ErrorMessage='' then
-    Result:=mrOK;
+  Tool.Reference(Self,ClassName);
+  try
+    Tool.Hint:=aCompileHint;
+    Tool.Process.Executable:=CompilerFilename;
+    Tool.CmdLineParams:=CmdLine;
+    Tool.Process.CurrentDirectory:=WorkingDir;
+    FPCParser:=TFPCParser(Tool.AddParsers(SubToolFPC));
+    FPCParser.HideHintsSenderNotUsed:=not AProject.CompilerOptions.ShowHintsForSenderNotUsed;
+    FPCParser.HideHintsUnitNotUsedInMainSource:=not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc;
+    if (not AProject.CompilerOptions.ShowHintsForUnusedUnitsInMainSrc)
+    and (AProject.MainFilename<>'') then
+      FPCParser.FilesToIgnoreUnitNotUsed.Add(AProject.MainFilename);
+    Tool.AddParsers(SubToolMake);
+    Tool.Execute;
+    Tool.WaitForExit;
+    if Tool.ErrorMessage='' then
+      Result:=mrOK;
+  finally
+    Tool.Release(Self);
+  end;
   {$ELSE}
   try
     if TheProcess=nil then
@@ -1243,7 +1248,7 @@ begin
         end
         else
           if not fRootOptGroup.SelectOption(s) then
-            fInvalidOptions.AddObject(s, TObject(Pointer(PtrUInt(i))));
+            fInvalidOptions.AddObject(s, TObject({%H-}Pointer(PtrUInt(i))));
         Inc(fCurOrigLine);
       end;
     end;
@@ -1266,7 +1271,7 @@ begin
     begin                                       // TCompilerOptSet
       s := TCompilerOptSet(aRoot).CollectSelectedOptions(fUseComments);
       if s <> '' then
-        fGenStrings.AddObject(s, TObject(Pointer(PtrUInt(aRoot.fOrigLine))));
+        fGenStrings.AddObject(s, TObject({%H-}Pointer(PtrUInt(aRoot.fOrigLine))));
     end
     else begin                                  // TCompilerOptGroup
       for i := 0 to Children.Count-1 do
@@ -1275,7 +1280,7 @@ begin
   end
   else if aRoot.Value <> '' then                // TCompilerOpt
     fGenStrings.AddObject(aRoot.GenerateOptValue(fUseComments),
-                          TObject(Pointer(PtrUINt(aRoot.fOrigLine))));
+                          TObject({%H-}Pointer(PtrUINt(aRoot.fOrigLine))));
 end;
 
 function TCompilerOptReader.FindLowestOrigLine(aStrings: TStrings;
@@ -1290,7 +1295,7 @@ begin
   MinOrigLine := MaxInt;
   for i := 0 to aStrings.Count-1 do
   begin
-    OriLine := Integer(PtrUInt(Pointer(aStrings.Objects[i])));
+    OriLine := Integer({%H-}PtrUInt(Pointer(aStrings.Objects[i])));
     if (OriLine > -1) and (OriLine < MinOrigLine) then
     begin
       MinOrigLine := OriLine;

@@ -39,11 +39,12 @@ interface
 uses
   Classes, SysUtils, contnrs, typinfo, LCLProc, LCLType, LResources, Graphics,
   Forms, FileProcs, FileUtil, AVL_Tree, LazConfigStorage, Laz2_XMLCfg,
-  LazFileUtils, BasicCodeTools, CodeToolsCfgScript, DefineTemplates,
-  CodeToolManager, CodeCache, CodeToolsStructs, PropEdits, LazIDEIntf,
-  MacroIntf, MacroDefIntf, PackageIntf, IDEOptionsIntf, EditDefineTree,
-  CompilerOptions, CompOptsModes, IDEOptionDefs, LazarusIDEStrConsts, IDEProcs,
-  ComponentReg, TransferMacros, FileReferenceList, PublishModule;
+  LazFileUtils, LazFileCache, BasicCodeTools, CodeToolsCfgScript,
+  DefineTemplates, CodeToolManager, CodeCache, CodeToolsStructs, PropEdits,
+  LazIDEIntf, MacroIntf, MacroDefIntf, PackageIntf, IDEOptionsIntf,
+  EditDefineTree, CompilerOptions, CompOptsModes, IDEOptionDefs,
+  LazarusIDEStrConsts, IDEProcs, ComponentReg, TransferMacros,
+  FileReferenceList, PublishModule;
 
 type
   TLazPackage = class;
@@ -176,7 +177,7 @@ type
     procedure UpdateSourceDirectoryReference;
     function GetFullFilename: string; override;
     function GetShortFilename(UseUp: boolean): string; override;
-    function GetResolvedFilename: string; // GetFullFilename + ReadAllLinks
+    function GetResolvedFilename: string; // GetFullFilename + resolve symlinks
   public
     property AddToUsesPkgSection: boolean
                        read GetAddToUsesPkgSection write SetAddToUsesPkgSection;
@@ -658,7 +659,7 @@ type
     function HasDirectory: boolean;
     function HasStaticDirectory: boolean;
     function GetFullFilename(ResolveMacros: boolean): string;
-    function GetResolvedFilename(ResolveMacros: boolean): string; // GetFullFilename + ReadAllLinks
+    function GetResolvedFilename(ResolveMacros: boolean): string; // GetFullFilename + resolve symlinks
     function GetSourceDirs(WithPkgDir, WithoutOutputDir: boolean): string;
     procedure GetInheritedCompilerOptions(var OptionsList: TFPList);
     function GetOutputDirectory(UseOverride: boolean = true): string; // this can change before building, when default dir is readonly
@@ -1759,8 +1760,7 @@ end;
 
 function TPkgFile.GetResolvedFilename: string;
 begin
-  Result:=ReadAllLinks(GetFullFilename,false);
-  if Result='' then Result:=GetFullFilename;
+  Result:=GetPhysicalFilenameCached(GetFullFilename,false);
 end;
 
 { TPkgDependency }
@@ -3000,12 +3000,8 @@ begin
 end;
 
 function TLazPackage.GetResolvedFilename(ResolveMacros: boolean): string;
-var
-  s: String;
 begin
-  Result:=GetFullFilename(ResolveMacros);
-  s:=ReadAllLinks(Result,false);
-  if s<>'' then Result:=s;
+  Result:=GetPhysicalFilenameCached(GetFullFilename(ResolveMacros),false);
 end;
 
 function TLazPackage.GetSourceDirs(WithPkgDir, WithoutOutputDir: boolean): string;

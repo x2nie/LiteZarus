@@ -127,9 +127,13 @@ begin
       Exit;
     if CodeContextFrm = nil then
       CodeContextFrm := TCodeContextFrm.Create(LazarusIDE.OwningComponent);
-    CodeContextFrm.SetCodeContexts(CodeContexts);
-
-    CodeContextFrm.Visible := True;
+    CodeContextFrm.DisableAlign;
+    try
+      CodeContextFrm.SetCodeContexts(CodeContexts);
+      CodeContextFrm.Visible := True;
+    finally
+      CodeContextFrm.EnableAlign;
+    end;
     Result := True;
   finally
     CodeContexts.Free;
@@ -888,7 +892,7 @@ begin
     Canvas.Font.Style:=TextGrayStyle;
     Canvas.Pen.Color:=PenColor;
     Details := ThemeServices.GetElementDetails(tttStandardLink);
-    ThemeServices.DrawElement(Canvas.Handle, Details, Canvas.ClipRect);
+    ThemeServices.DrawElement(Canvas.Handle, Details, ClientRect);
   end else begin
     Canvas.Font.Style:=[fsBold];
   end;

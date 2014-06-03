@@ -54,7 +54,8 @@ interface
 uses
   Classes, SysUtils, LazUTF8, CodeToolsStrConsts, ExprEval, DirectoryCacher,
   BasicCodeTools, Laz2_XMLCfg, lazutf8classes, LazFileUtils, AVL_Tree, process,
-  CodeToolsStructs, UTF8Process, KeywordFuncLists, LinkScanner, FileProcs;
+  CodeToolsStructs, UTF8Process, LazFileCache, KeywordFuncLists, LinkScanner,
+  FileProcs;
 
 const
   ExternalMacroStart = ExprEval.ExternalMacroStart;
@@ -1490,6 +1491,7 @@ function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
     Filename: String;
   begin
     //DebugLn(['ProcessOutputLine ',Line]);
+    Line:=SysToUtf8(Line);
     len := length(Line);
     if len <= 6 then Exit; // shortest match
 
@@ -1544,7 +1546,7 @@ function ParseFPCVerbose(List: TStrings; const WorkDir: string; out
         Inc(CurPos, 17);
         NewPath:=SetDirSeparators(copy(Line,CurPos,len));
         if not FilenameIsAbsolute(NewPath) then
-          NewPath:=ExpandFileNameUTF8(AnsiToUtf8(NewPath));
+          NewPath:=ExpFile(NewPath);
         NewPath:=ChompPathDelim(TrimFilename(NewPath));
         {$IFDEF VerboseFPCSrcScan}
         DebugLn('Using unit path: "',NewPath,'"');
@@ -7711,8 +7713,9 @@ begin
     Result:=Search(GetDefaultCompilerFilename(aTargetCPU,false)+Postfix);
     if Result='' then exit;
   end;
-  if ResolveLinks then
-    Result:=TryReadAllLinks(Result);
+  if ResolveLinks then begin
+    Result:=GetPhysicalFilenameCached(Result,false);
+  end;
 end;
 
 function TFPCTargetConfigCache.GetUnitPaths: string;
@@ -8652,7 +8655,7 @@ procedure TFPCUnitSetCache.SetCompilerFilename(const AValue: string);
 var
   NewFilename: String;
 begin
-  NewFilename:=TrimAndExpandFilename(AValue);
+  NewFilename:=ResolveDots(AValue);
   if FCompilerFilename=NewFilename then exit;
   FCompilerFilename:=NewFilename;
   ClearConfigCache;

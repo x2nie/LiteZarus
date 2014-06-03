@@ -18,9 +18,9 @@ msgid "Error while parsing trace file"
 msgstr "Ошибка разбора файла стека вызовов"
 
 #: heaptrcview.rsleakview
-#| msgid "Leak View"
-msgid "Find source lines for leak/stack-traces"
-msgstr "Найти строки исходного кода с утечками памяти/из стека вызовов"
+#| msgid "Find source lines for leak/stack-traces"
+msgid "Leaks and Traces"
+msgstr "Утечки памяти и стек вызовов"
 
 #: heaptrcview.sbtnclipbrd
 msgid "Paste Clipboard"
@@ -43,9 +43,9 @@ msgid "Stay on top"
 msgstr "Поверх других окон"
 
 #: heaptrcview.sfrmcap
-#| msgid "HeapTrcViewForm"
-msgid "LeakView - HeapTrc output viewer"
-msgstr "LeakView - программа просмотра вывода HeapTrc"
+#| msgid "LeakView - HeapTrc output viewer"
+msgid "Leaks and Traces - HeapTrc and GDB backtrace output viewer"
+msgstr "Утечки памяти и стек вызовов - программа просмотра вывода HeapTrc и стека вызовов GDB"
 
 #: heaptrcview.sfrmselectfilewithdebuginfo
 msgid "Select File with debug info"

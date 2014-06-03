@@ -28,15 +28,23 @@ uses
   {$IFDEF unix}
   cthreads,
   {$ENDIF}
-  Classes, SysUtils, CustApp, LCLProc, Dialogs, Forms, Controls, FileUtil,
-  masks, Interfaces, InterfaceBase, UTF8Process, LConvEncoding,
+  Classes, SysUtils,
+  Interfaces, // this includes the NoGUI widgetset
+  CustApp, LCLProc, Dialogs, Forms, Controls,
+  FileUtil, Masks, InterfaceBase, UTF8Process, LConvEncoding,
   // codetools
   CodeCache, CodeToolManager, DefineTemplates, Laz2_XMLCfg, LazUTF8,
   // IDEIntf
   MacroIntf, PackageIntf, IDEDialogs, ProjectIntf, IDEExternToolIntf,
   CompOptsIntf, LazIDEIntf,
   // IDE
-  IDEProcs, InitialSetupDlgs, {$ifndef EnableNewExtTools}OutputFilter, {$endif}CompilerOptions, ApplicationBundle,
+  IDEProcs, InitialSetupDlgs,
+  {$IFDEF EnableNewExtTools}
+  ExtTools,
+  {$ELSE}
+  OutputFilter,
+  {$endif}
+  CompilerOptions, ApplicationBundle,
   TransferMacros, EnvironmentOpts, IDETranslations, LazarusIDEStrConsts,
   IDECmdLine, ExtToolDialog, MiscOptions, Project, LazConf, PackageDefs,
   PackageLinks, PackageSystem, BuildLazDialog, BuildProfileManager,
@@ -66,10 +74,12 @@ type
     fInitResult: boolean;
     fWidgetsetOverride: String;
     // external tools
+    {$IFNDEF EnableNewExtTools}
     procedure OnExtToolFreeOutputFilter({%H-}OutputFilter: TOutputFilter;
                                         ErrorOccurred: boolean);
     procedure OnExtToolNeedsOutputFilter(var OutputFilter: TOutputFilter;
                                          var {%H-}Abort: boolean);
+    {$ENDIF}
 
     // codetools
     procedure OnCodeBufferDecodeLoaded({%H-}Code: TCodeBuffer;
@@ -131,7 +141,9 @@ type
     function Init: boolean;
     procedure LoadEnvironmentOptions;
     procedure LoadMiscellaneousOptions;
+    {$IFNDEF EnableNewExtTools}
     procedure SetupOutputFilter;
+    {$ENDIF}
     procedure SetupMacros;
     procedure SetupCodetools;
     procedure SetupPackageSystem;
@@ -149,7 +161,9 @@ type
     function ParseParameters: boolean;
     procedure WriteUsage;
     procedure Error(ErrorCode: Byte; const ErrorMsg: string);
+    {$IFNDEF EnableNewExtTools}
     function OnRunExternalTool(Tool: TIDEExternalToolOptions): TModalResult;
+    {$ENDIF}
 
     property AddPackage: boolean read FAddPackage write FAddPackage; // add package to installed pacakge in IDE (UserIDE)
     property BuildAll: boolean read FBuildAll write FBuildAll;// build all files of project/package
@@ -170,7 +184,7 @@ type
   end;
 
 var
-  Application: TLazBuildApplication = nil;
+  LazBuildApp: TLazBuildApplication = nil;
 
 const
   ErrorFileNotFound = 1;
@@ -258,6 +272,7 @@ end;
 
 { TLazBuildApplication }
 
+{$IFNDEF EnableNewExtTools}
 procedure TLazBuildApplication.OnExtToolFreeOutputFilter(
   OutputFilter: TOutputFilter; ErrorOccurred: boolean);
 begin
@@ -269,6 +284,7 @@ procedure TLazBuildApplication.OnExtToolNeedsOutputFilter(
 begin
   OutputFilter:=TheOutputFilter;
 end;
+{$ENDIF}
 
 procedure TLazBuildApplication.OnCodeBufferEncodeSaving(Code: TCodeBuffer;
   const Filename: string; var Source: string);
@@ -579,7 +595,9 @@ begin
   Builder:=TLazarusBuilder.Create;
   try
     Builder.ProfileChanged:=false;
+    {$IFNDEF EnableNewExtTools}
     Builder.ExternalTools:=EnvironmentOptions.ExternalTools;
+    {$ENDIF}
 
     if BuildLazProfiles.Current.IdeBuildMode=bmCleanAllBuild then begin
       Builder.PackageOptions:='';
@@ -820,7 +838,7 @@ var
     // update all lrs files
     MainBuildBoss.UpdateProjectAutomaticFiles('');
 
-    // create application bundle
+    // create LazBuildApp bundle
     if Project1.UseAppBundle and (Project1.MainUnitID>=0)
     and (MainBuildBoss.GetLCLWidgetType=LCLPlatformDirNames[lpCarbon])
     then begin
@@ -1104,7 +1122,12 @@ begin
   SetupCodetools;
   SetupCompilerFilename;
   SetupPackageSystem;
+  {$IFDEF EnableNewExtTools}
+  MainBuildBoss.SetupExternalTools;
+  ExtToolConsole:=TLazExtToolConsole.Create(nil);
+  {$ELSE}
   SetupOutputFilter;
+  {$ENDIF}
   MainBuildBoss.SetupCompilerInterface;
 
   StoreBaseSettings;
@@ -1128,16 +1151,18 @@ begin
     fCompilerInCfg:=CompilerFilename;
     fLazarusDirInCfg:=LazarusDirectory;
 
-    if Application.HasOption('language') then begin
+    if LazBuildApp.HasOption('language') then begin
       if ConsoleVerbosity>=0 then
         debugln('Note: overriding language with command line: ',
-          Application.GetOptionValue('language'));
-      EnvironmentOptions.LanguageID:=Application.GetOptionValue('language');
+          LazBuildApp.GetOptionValue('language'));
+      EnvironmentOptions.LanguageID:=LazBuildApp.GetOptionValue('language');
     end;
     TranslateResourceStrings(EnvironmentOptions.GetParsedLazarusDirectory,
                              EnvironmentOptions.LanguageID);
+    {$IFNDEF EnableNewExtTools}
     TExternalToolList(ExternalTools).OnNeedsOutputFilter:=@OnExtToolNeedsOutputFilter;
     TExternalToolList(ExternalTools).OnFreeOutputFilter:=@OnExtToolFreeOutputFilter;
+    {$ENDIF}
     if CompilerOverride<>'' then
       CompilerFilename:=CompilerOverride;
     //debugln(['TLazBuildApplication.LoadEnvironmentOptions LazarusDirectory="',LazarusDirectory,'"']);
@@ -1161,11 +1186,13 @@ begin
   MiscellaneousOptions.Load;
 end;
 
+{$IFNDEF EnableNewExtTools}
 procedure TLazBuildApplication.SetupOutputFilter;
 begin
   TheOutputFilter:=TOutputFilter.Create;
   TheOutputFilter.OnGetIncludePath:=@CodeToolBoss.GetIncludePathForDirectory;
 end;
+{$ENDIF}
 
 procedure TLazBuildApplication.SetupMacros;
 begin
@@ -1375,9 +1402,11 @@ constructor TLazBuildApplication.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
   SetupDialogs;
-  TOutputFilterProcess:=TProcessUTF8;
   Files:=TStringList.Create;
+  {$IFNDEF EnableNewExtTools}
+  TOutputFilterProcess:=TProcessUTF8;
   RunExternalTool := @OnRunExternalTool;
+  {$ENDIF}
 end;
 
 destructor TLazBuildApplication.Destroy;
@@ -1392,7 +1421,11 @@ begin
 
   FreeThenNil(PkgLinks);
   FreeThenNil(TheCompiler);
+  {$IFDEF EnableNewExtTools}
+  FreeAndNil(ExtToolConsole);
+  {$ELSE}
   FreeThenNil(TheOutputFilter);
+  {$ENDIF}
   FreeThenNil(GlobalMacroList);
   FreeThenNil(IDEMacros);
   FreeThenNil(MiscellaneousOptions);
@@ -1670,11 +1703,13 @@ begin
   Halt(ErrorCode);
 end;
 
+{$IFNDEF EnableNewExtTools}
 function TLazBuildApplication.OnRunExternalTool(Tool: TIDEExternalToolOptions
   ): TModalResult;
 begin
   Result:=EnvironmentOptions.ExternalTools.Run(Tool,GlobalMacroList,false);
 end;
+{$ENDIF}
 
 begin
   // When quick rebuilding lazbuild, FPC rebuilds only the lazbuild.lpr, so any
@@ -1691,11 +1726,11 @@ begin
   {$IFDEF BuildWidgetSetNoGui}  Result:=lpNoGUI;  {$ENDIF}
 
   FilterConfigFileContent;
-  // free LCL application
-  FreeAndNil(Forms.Application);
-  // start our own application
-  Application:=TLazBuildApplication.Create(nil);
-  Application.Run;
+  // free LCL Application to help debugging nogui issues
   Application.Free;
+  // start our own LazBuildApp
+  LazBuildApp:=TLazBuildApplication.Create(nil);
+  LazBuildApp.Run;
+  LazBuildApp.Free;
 end.
 

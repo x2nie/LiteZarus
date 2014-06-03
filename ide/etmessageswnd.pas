@@ -27,12 +27,14 @@ unit etMessagesWnd;
 
 {$mode objfpc}{$H+}
 
+{$IFNDEF EnableNewExtTools}{$Error Wrong}{$ENDIF}
+
 interface
 
 uses
   Classes, SysUtils, FileUtil, IDEMsgIntf, IDEImagesIntf, IDEExternToolIntf,
-  LazIDEIntf, Forms, Controls, Graphics, Dialogs, LCLProc, etMessageFrame,
-  etSrcEditMarks, etQuickFixes;
+  LazIDEIntf, SrcEditorIntf, SynEditMarks, Forms, Controls, Graphics, Dialogs,
+  LCLProc, etMessageFrame, etSrcEditMarks, etQuickFixes;
 
 type
 
@@ -51,25 +53,32 @@ type
   protected
     function GetViews(Index: integer): TExtToolView; override;
   public
-    SourceMarks: TETMarks;
-    procedure ClearCustomMessages(const ViewCaption: string='');
-    function AddCustomMessage(TheUrgency: TMessageLineUrgency; Msg: string;
-      aSrcFilename: string=''; LineNumber: integer=0; Column: integer=0;
-      const ViewCaption: string=''): TMessageLine; override;
+    // views
     procedure Clear; override;
     procedure DeleteView(View: TExtToolView); override;
     function FindUnfinishedView: TExtToolView; override;
     function GetSelectedLine: TMessageLine; override;
     function GetView(aCaption: string; CreateIfNotExist: boolean
       ): TExtToolView; override;
+    function ViewCount: integer; override;
     function CreateView(aCaptionPrefix: string): TExtToolView; override;
     function IndexOfView(View: TExtToolView): integer; override;
+
+    // lines
     procedure SelectMsgLine(Msg: TMessageLine); override;
     function SelectFirstUrgentMessage(aMinUrgency: TMessageLineUrgency;
       WithSrcPos: boolean): boolean; override;
     function SelectNextUrgentMessage(aMinUrgency: TMessageLineUrgency;
       WithSrcPos, Downwards: boolean): boolean; override;
-    function ViewCount: integer; override;
+    procedure ClearCustomMessages(const ViewCaption: string='');
+    function AddCustomMessage(TheUrgency: TMessageLineUrgency; Msg: string;
+      aSrcFilename: string=''; LineNumber: integer=0; Column: integer=0;
+      const ViewCaption: string=''): TMessageLine; override;
+
+    // misc
+    procedure SourceEditorPopup(MarkLine: TSynEditMarkLine);
+
+    // options
     procedure ApplyIDEOptions;
     property DblClickJumps: boolean read GetDblClickJumps write SetDblClickJumps;
     property HideMessagesIcons: boolean read GetHideMessagesIcons write SetHideMessagesIcons;
@@ -85,42 +94,10 @@ implementation
 { TMessagesView }
 
 procedure TMessagesView.FormCreate(Sender: TObject);
-var
-  ImgIDInfo: Integer;
-  ImgIDHint: Integer;
-  ImgIDNote: Integer;
-  ImgIDWarning: Integer;
-  ImgIDError: Integer;
-  ImgIDFatal: Integer;
 begin
   IDEMessagesWindow:=Self;
   Caption:='Messages';
 
-  SourceMarks:=TETMarks.Create(Self);
-  ImgIDInfo:=IDEImages.LoadImage(12, 'state12x12_information');
-  ImgIDHint:=IDEImages.LoadImage(12, 'state12x12_hint');
-  ImgIDNote:=IDEImages.LoadImage(12, 'state12x12_note');
-  ImgIDWarning:=IDEImages.LoadImage(12, 'state12x12_warning');
-  ImgIDError:=IDEImages.LoadImage(12, 'state12x12_error');
-  ImgIDFatal:=IDEImages.LoadImage(12, 'state12x12_fatal');
-  with SourceMarks do begin
-    ImageList:=IDEImages.Images_12;
-    //OnGetSynEditOfFile:=@SourceMarksGetSynEditOfFile;
-    MarkStyles[mluNone].ImageIndex:=-1;
-    MarkStyles[mluProgress].ImageIndex:=-1;
-    MarkStyles[mluDebug].ImageIndex:= ImgIDInfo;
-    MarkStyles[mluVerbose3].ImageIndex:=ImgIDInfo;
-    MarkStyles[mluVerbose2].ImageIndex:=ImgIDInfo;
-    MarkStyles[mluVerbose].ImageIndex:=ImgIDInfo;
-    MarkStyles[mluHint].ImageIndex:=ImgIDHint;
-    MarkStyles[mluNote].ImageIndex:=ImgIDNote;
-    MarkStyles[mluWarning].ImageIndex:=ImgIDWarning;
-    MarkStyles[mluImportant].ImageIndex:=-1;
-    MarkStyles[mluError].ImageIndex:=ImgIDError;
-    MarkStyles[mluFatal].ImageIndex:=ImgIDFatal;
-    MarkStyles[mluPanic].ImageIndex:=ImgIDFatal;
-  end;
-  MessagesFrame1.MessagesCtrl.SourceMarks:=SourceMarks;
   MessagesFrame1.MessagesCtrl.OnOpenMessage:=@OnOpenMessage;
 
   ActiveControl:=MessagesFrame1.MessagesCtrl;
@@ -179,9 +156,14 @@ begin
     LineNumber,Column,ViewCaption);
 end;
 
+procedure TMessagesView.SourceEditorPopup(MarkLine: TSynEditMarkLine);
+begin
+  MessagesFrame1.SourceEditorPopup(MarkLine);
+end;
+
 procedure TMessagesView.Clear;
 begin
-  MessagesFrame1.ClearViews;
+  MessagesFrame1.ClearViews(true);
 end;
 
 procedure TMessagesView.DeleteView(View: TExtToolView);

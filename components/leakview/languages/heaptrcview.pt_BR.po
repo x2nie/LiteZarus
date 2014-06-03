@@ -19,8 +19,8 @@ msgstr "Erro ao analisar arquivo de rastreamento"
 
 #: heaptrcview.rsleakview
 #, fuzzy
-#| msgid "Leak View"
-msgid "Find source lines for leak/stack-traces"
+#| msgid "Find source lines for leak/stack-traces"
+msgid "Leaks and Traces"
 msgstr "Exibir Vazamentos de Memória"
 
 #: heaptrcview.sbtnclipbrd
@@ -45,8 +45,8 @@ msgstr "Permanecer no topo"
 
 #: heaptrcview.sfrmcap
 #, fuzzy
-#| msgid "HeapTrcViewForm"
-msgid "LeakView - HeapTrc output viewer"
+#| msgid "LeakView - HeapTrc output viewer"
+msgid "Leaks and Traces - HeapTrc and GDB backtrace output viewer"
 msgstr "Exibição Rastreamento Pilha"
 
 #: heaptrcview.sfrmselectfilewithdebuginfo

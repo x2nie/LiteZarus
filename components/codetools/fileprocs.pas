@@ -138,16 +138,16 @@ function FileDateToDateTimeDef(aFileDate: TCTFileAgeTime; const Default: TDateTi
 function ClearFile(const Filename: string; RaiseOnError: boolean): boolean;
 function GetTempFilename(const Path, Prefix: string): string;
 function SearchFileInDir(const Filename, BaseDirectory: string;
-                         SearchCase: TCTSearchFileCase): string;
+                         SearchCase: TCTSearchFileCase): string; // not thread-safe
 function SearchFileInPath(const Filename, BasePath, SearchPath,
-                      Delimiter: string; SearchCase: TCTSearchFileCase): string;
+                      Delimiter: string; SearchCase: TCTSearchFileCase): string; // not thread-safe
 function FindDiskFilename(const Filename: string): string;
 {$IFDEF darwin}
 function GetDarwinSystemFilename(Filename: string): string;
 {$ENDIF}
 function ReadAllLinks(const Filename: string;
-                      ExceptionOnError: boolean): string; // if a link is broken returns ''
-function TryReadAllLinks(const Filename: string): string; // if a link is broken returns Filename
+                      ExceptionOnError: boolean): string; inline; // if a link is broken returns ''
+function TryReadAllLinks(const Filename: string): string; inline; // if a link is broken returns Filename
 
 const
   CTInvalidChangeStamp = LUInvalidChangeStamp;
@@ -791,64 +791,13 @@ end;
  ------------------------------------------------------------------------------}
 function ReadAllLinks(const Filename: string;
   ExceptionOnError: boolean): string;
-{$IFNDEF WINDOWS}
-var
-  LinkFilename: string;
-  AText: string;
-  Depth: integer;
-{$ENDIF}
 begin
-  Result:=Filename;
-  {$IFDEF WINDOWS}
-
-  {$ELSE}
-  Depth:=0;
-  while Depth<12 do begin
-    inc(Depth);
-    LinkFilename:=FpReadLink(Result);
-    if LinkFilename='' then begin
-      AText:='"'+Filename+'"';
-      case fpGetErrno() of
-      ESysEAcces:
-        AText:='read access denied for '+AText;
-      ESysENoEnt:
-        AText:='a directory component in '+AText
-                            +' does not exist or is a dangling symlink';
-      ESysENotDir:
-        AText:='a directory component in '+AText+' is not a directory';
-      ESysENoMem:
-        AText:='insufficient memory';
-      ESysELoop:
-        AText:=AText+' has a circular symbolic link';
-      else
-        // not a symbolic link, just a regular file
-        exit;
-      end;
-      if (not ExceptionOnError) then begin
-        Result:='';
-        exit;
-      end;
-      raise EFOpenError.Create(AText);
-    end else begin
-      if not FilenameIsAbsolute(LinkFilename) then
-        Result:=ExpandFileNameUTF8(ExtractFilePath(Result)+LinkFilename)
-      else
-        Result:=LinkFilename;
-    end;
-  end;
-  // probably an endless loop
-  if ExceptionOnError then
-    raise EFOpenError.Create('too many links, maybe an endless loop.')
-  else
-    Result:='';
-  {$ENDIF}
+  Result:=LazFileUtils.ReadAllLinks(Filename,ExceptionOnError);
 end;
 
 function TryReadAllLinks(const Filename: string): string;
 begin
-  Result:=ReadAllLinks(Filename,false);
-  if Result='' then
-    Result:=Filename;
+  Result:=LazFileUtils.TryReadAllLinks(Filename);
 end;
 
 {$IFDEF darwin}
@@ -1139,7 +1088,7 @@ var
   p, StartPos, l: integer;
   CurPath, Base: string;
 begin
-  Base:=ExpandFileNameUTF8(AppendPathDelim(BasePath));
+  Base:=AppendPathDelim(ExpandFileNameUTF8(BasePath));
   // search in current directory
   Result:=SearchPascalUnitInDir(AnUnitName,Base,SearchCase);
   if Result<>'' then exit;
@@ -1153,7 +1102,7 @@ begin
     if CurPath<>'' then begin
       if not FilenameIsAbsolute(CurPath) then
         CurPath:=Base+CurPath;
-      CurPath:=ExpandFileNameUTF8(AppendPathDelim(CurPath));
+      CurPath:=AppendPathDelim(ResolveDots(CurPath));
       Result:=SearchPascalUnitInDir(AnUnitName,CurPath,SearchCase);
       if Result<>'' then exit;
     end;
@@ -1230,7 +1179,7 @@ var
   p, StartPos, l: integer;
   CurPath, Base: string;
 begin
-  Base:=ExpandFileNameUTF8(AppendPathDelim(BasePath));
+  Base:=AppendPathDelim(ExpandFileNameUTF8(BasePath));
   // search in current directory
   if not FilenameIsAbsolute(Base) then
     Base:='';
@@ -1248,7 +1197,7 @@ begin
     if CurPath<>'' then begin
       if not FilenameIsAbsolute(CurPath) then
         CurPath:=Base+CurPath;
-      CurPath:=ExpandFileNameUTF8(AppendPathDelim(CurPath));
+      CurPath:=AppendPathDelim(ResolveDots(CurPath));
       if FilenameIsAbsolute(CurPath) then begin
         Result:=SearchPascalFileInDir(ShortFilename,CurPath,SearchCase);
         if Result<>'' then exit;
@@ -1454,23 +1403,21 @@ var
 begin
   //debugln('[SearchFileInPath] Filename="',Filename,'" BasePath="',BasePath,'" SearchPath="',SearchPath,'" Delimiter="',Delimiter,'"');
   if (Filename='') then begin
-    Result:=Filename;
+    Result:='';
     exit;
   end;
   // check if filename absolute
   if FilenameIsAbsolute(Filename) then begin
     if SearchCase=ctsfcDefault then begin
-      if FileExistsCached(Filename) then begin
-        Result:=ExpandFileNameUTF8(Filename);
-      end else begin
+      Result:=ResolveDots(Filename);
+      if not FileExistsCached(Result) then
         Result:='';
-      end;
     end else
       Result:=SearchFileInPath(ExtractFilename(Filename),
         ExtractFilePath(BasePath),'',';',SearchCase);
     exit;
   end;
-  Base:=ExpandFileNameUTF8(AppendPathDelim(BasePath));
+  Base:=AppendPathDelim(ExpandFileNameUTF8(BasePath));
   // search in current directory
   Result:=SearchFileInDir(Filename,Base,SearchCase);
   if Result<>'' then exit;
@@ -1484,7 +1431,7 @@ begin
     if CurPath<>'' then begin
       if not FilenameIsAbsolute(CurPath) then
         CurPath:=Base+CurPath;
-      CurPath:=ExpandFileNameUTF8(AppendPathDelim(CurPath));
+      CurPath:=AppendPathDelim(ResolveDots(CurPath));
       Result:=SearchFileInDir(Filename,CurPath,SearchCase);
       if Result<>'' then exit;
     end;

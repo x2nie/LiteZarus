@@ -77,7 +77,7 @@ resourcestring
   //
   rsErrorParse = 'Error while parsing trace file';
   rsDTimes = ' (%d times)';
-  rsLeakView = 'Find source lines for leak/stack-traces';
+  rsLeakView = 'Leaks and Traces';
   //
   slblTrace = '.trc file';
   sbtnUpdate = 'Update';
@@ -85,7 +85,7 @@ resourcestring
   sbtnResolve = 'Resolve';
   schkRaw = 'Raw leak data';
   schkTop = 'Stay on top';
-  sfrmCap = 'LeakView - HeapTrc output viewer';
+  sfrmCap = 'Leaks and Traces - HeapTrc and GDB backtrace output viewer';
   sfrmSelectFileWithDebugInfo = 'Select File with debug info';
 
 var
@@ -551,7 +551,7 @@ end;
 
 procedure Register;
 begin
-  RegisterIDEMenuCommand(itmSecondaryTools, 'mnuLeakView', rsLeakView, nil,
+  RegisterIDEMenuCommand(itmViewMainWindows, 'mnuLeakView', rsLeakView, nil,
     @IDEMenuClicked);
 end;
 

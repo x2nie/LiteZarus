@@ -43,17 +43,22 @@ interface
 
 uses
   typinfo, Classes, SysUtils, FileProcs, FileUtil, Laz2_XMLCfg, LazFileUtils,
-  AvgLvlTree, Laz2_DOM, InterfaceBase, LCLProc, Forms, Controls, ExprEval,
+  {$IFDEF EnableNewExtTools}
+  AvgLvlTree,
+  {$ENDIF}
+  Laz2_DOM, InterfaceBase, LCLProc, Forms, Controls, ExprEval,
   DefineTemplates, CodeToolsCfgScript, CodeToolManager, KeywordFuncLists,
   BasicCodeTools,
   // IDEIntf
   ProjectIntf, MacroIntf, IDEExternToolIntf, SrcEditorIntf, CompOptsIntf,
-  IDEOptionsIntf, IDEMsgIntf,
+  IDEOptionsIntf,
   // IDE
   LazarusIDEStrConsts, IDEProcs, LazConf,
   TransferMacros,
   {$IFDEF EnableNewExtTools}
   etFPCMsgParser,
+  {$ELSE}
+  IDEMsgIntf,
   {$ENDIF}
   ModeMatrixOpts, CompOptsModes, EnvironmentOpts;
 
@@ -1774,14 +1779,18 @@ begin
   ShowGenInfo := aXMLConfig.GetValue(p+'Verbosity/ShowGenInfo/Value', true);
   ShowLineNum := aXMLConfig.GetValue(p+'Verbosity/ShoLineNum/Value', false);
   ShowAll := aXMLConfig.GetValue(p+'Verbosity/ShowAll/Value', false);
+  {$IFNDEF EnableNewExtTools}
   ShowAllProcsOnError := aXMLConfig.GetValue(p+'Verbosity/ShowAllProcsOnError/Value', false);
+  {$ENDIF}
   ShowDebugInfo := aXMLConfig.GetValue(p+'Verbosity/ShowDebugInfo/Value', false);
   ShowUsedFiles := aXMLConfig.GetValue(p+'Verbosity/ShowUsedFiles/Value', false);
   ShowTriedFiles := aXMLConfig.GetValue(p+'Verbosity/ShowTriedFiles/Value', false);
   ShowCompProc := aXMLConfig.GetValue(p+'Verbosity/ShowCompProc/Value', false);
   ShowCond := aXMLConfig.GetValue(p+'Verbosity/ShowCond/Value', false);
   ShowExecInfo := aXMLConfig.GetValue(p+'Verbosity/ShowExecInfo/Value', false);
+  {$IFNDEF EnableNewExtTools}
   ShowNothing := aXMLConfig.GetValue(p+'Verbosity/ShowNothing/Value', false);
+  {$ENDIF}
   ShowSummary := aXMLConfig.GetValue(p+'Verbosity/ShowSummary/Value', false);
   ShowHintsForUnusedUnitsInMainSrc := aXMLConfig.GetValue(p+'Verbosity/ShowHintsForUnusedUnitsInMainSrc/Value', false);
   ShowHintsForSenderNotUsed := aXMLConfig.GetValue(p+'Verbosity/ShowHintsForSenderNotUsed/Value', false);
@@ -1994,14 +2003,18 @@ begin
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowGenInfo/Value', ShowGenInfo,true);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShoLineNum/Value', ShowLineNum,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowAll/Value', ShowAll,false);
+  {$IFNDEF EnableNewExtTools}
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowAllProcsOnError/Value', ShowAllProcsOnError,false);
+  {$ENDIF}
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowDebugInfo/Value', ShowDebugInfo,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowUsedFiles/Value', ShowUsedFiles,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowTriedFiles/Value', ShowTriedFiles,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowCompProc/Value', ShowCompProc,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowCond/Value', ShowCond,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowExecInfo/Value', ShowExecInfo,false);
+  {$IFNDEF EnableNewExtTools}
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowNothing/Value', ShowNothing,false);
+  {$ENDIF}
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowSummary/Value', ShowSummary,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowHintsForUnusedUnitsInMainSrc/Value', ShowHintsForUnusedUnitsInMainSrc,false);
   aXMLConfig.SetDeleteValue(p+'Verbosity/ShowHintsForSenderNotUsed/Value', ShowHintsForSenderNotUsed,false);
@@ -3150,8 +3163,10 @@ begin
     tempsw := tempsw + 'i';
   if (ShowLineNum) then
     tempsw := tempsw + 'l';
+  {$IFNDEF EnableNewExtTools}
   if (ShowAllProcsOnError) then
     tempsw := tempsw + 'b';
+  {$ENDIF}
   if (ShowDebugInfo) then
     tempsw := tempsw + 'd';
   if (ShowUsedFiles) then
@@ -3164,12 +3179,16 @@ begin
     tempsw := tempsw + 'c';
   if (ShowExecInfo) then
     tempsw := tempsw + 'x';
-
+  {$IFNDEF EnableNewExtTools}
   if ShowNothing then
     tempsw := '0';
+  {$ENDIF}
 
   if ShowAll or (ccloAddVerboseAll in Flags) then
     tempsw := 'a';
+  {$IFDEF EnableNewExtTools}
+  tempsw := tempsw + 'bq'; // full file names and message ids
+  {$ENDIF}
 
   if (tempsw <> '') then begin
     tempsw := '-v' + tempsw;
@@ -3492,14 +3511,18 @@ begin
   fShowGenInfo := true;
   fShowLineNum := false;
   fShowAll := false;
+  {$IFNDEF EnableNewExtTools}
   fShowAllProcsOnError := false;
+  {$ENDIF}
   fShowDebugInfo := false;
   fShowUsedFiles := false;
   fShowTriedFiles := false;
   fShowCompProc := false;
   fShowCond := false;
   fShowExecInfo := false;
+  {$IFNDEF EnableNewExtTools}
   fShowNothing := false;
+  {$ENDIF}
   fShowSummary := false;
   fShowHintsForUnusedUnitsInMainSrc := false;
   fShowHintsForSenderNotUsed := false;
@@ -3612,14 +3635,18 @@ begin
   fShowGenInfo := CompOpts.fShowGenInfo;
   fShowLineNum := CompOpts.fShowLineNum;
   fShowAll := CompOpts.fShowAll;
+  {$IFNDEF EnableNewExtTools}
   fShowAllProcsOnError := CompOpts.fShowAllProcsOnError;
+  {$ENDIF}
   fShowDebugInfo := CompOpts.fShowDebugInfo;
   fShowUsedFiles := CompOpts.fShowUsedFiles;
   fShowTriedFiles := CompOpts.fShowTriedFiles;
   fShowCompProc := CompOpts.fShowCompProc;
   fShowCond := CompOpts.fShowCond;
   fShowCond := CompOpts.fShowExecInfo;
+  {$IFNDEF EnableNewExtTools}
   fShowNothing := CompOpts.fShowNothing;
+  {$ENDIF}
   fShowSummary := CompOpts.FShowSummary;
   fShowHintsForUnusedUnitsInMainSrc := CompOpts.fShowHintsForUnusedUnitsInMainSrc;
   fShowHintsForSenderNotUsed := CompOpts.fShowHintsForSenderNotUsed;
@@ -3775,14 +3802,18 @@ begin
   if Done(Tool.AddDiff('ShowGenInfo',fShowGenInfo,CompOpts.fShowGenInfo)) then exit;
   if Done(Tool.AddDiff('ShowLineNum',fShowLineNum,CompOpts.fShowLineNum)) then exit;
   if Done(Tool.AddDiff('ShowAll',fShowAll,CompOpts.fShowAll)) then exit;
+  {$IFNDEF EnableNewExtTools}
   if Done(Tool.AddDiff('ShowAllProcsOnError',fShowAllProcsOnError,CompOpts.fShowAllProcsOnError)) then exit;
+  {$ENDIF}
   if Done(Tool.AddDiff('ShowDebugInfo',fShowDebugInfo,CompOpts.fShowDebugInfo)) then exit;
   if Done(Tool.AddDiff('ShowUsedFiles',fShowUsedFiles,CompOpts.fShowUsedFiles)) then exit;
   if Done(Tool.AddDiff('ShowTriedFiles',fShowTriedFiles,CompOpts.fShowTriedFiles)) then exit;
   if Done(Tool.AddDiff('ShowCompProc',fShowCompProc,CompOpts.fShowCompProc)) then exit;
   if Done(Tool.AddDiff('ShowCond',fShowCond,CompOpts.fShowCond)) then exit;
   if Done(Tool.AddDiff('ShowExecInfo',fShowExecInfo,CompOpts.fShowExecInfo)) then exit;
+  {$IFNDEF EnableNewExtTools}
   if Done(Tool.AddDiff('ShowNothing',fShowNothing,CompOpts.fShowNothing)) then exit;
+  {$ENDIF}
   if Done(Tool.AddDiff('ShowSummary',fShowSummary,CompOpts.fShowSummary)) then exit;
   if Done(Tool.AddDiff('ShowHintsForUnusedUnitsInMainSrc',fShowHintsForUnusedUnitsInMainSrc,CompOpts.fShowHintsForUnusedUnitsInMainSrc)) then exit;
   if Done(Tool.AddDiff('ShowHintsForSenderNotUsed',fShowHintsForSenderNotUsed,CompOpts.fShowHintsForSenderNotUsed)) then exit;
@@ -4455,21 +4486,26 @@ begin
 
   {$IFDEF EnableNewExtTools}
   ExtTool:=ExternalToolList.Add(ToolTitle);
-  ExtTool.Hint:=CompileHint;
-  ExtTool.Process.CurrentDirectory:=WorkingDir;
-  ExtTool.Process.Executable:=ProgramFilename;
-  ExtTool.CmdLineParams:=Params;
-  if ScanForFPCMessages then
-    ExtTool.AddParsers(SubToolFPC);
-  if ScanForMakeMessages then
-    ExtTool.AddParsers(SubToolMake);
-  if ExtTool.ParserCount=0 then
-    ExtTool.AddParsers(SubToolDefault);
-  // run
-  ExtTool.Execute;
-  ExtTool.WaitForExit;
-  if ExtTool.ErrorMessage='' then
-    Result:=mrOK;
+  ExtTool.Reference(Self,ClassName);
+  try
+    ExtTool.Hint:=CompileHint;
+    ExtTool.Process.CurrentDirectory:=WorkingDir;
+    ExtTool.Process.Executable:=ProgramFilename;
+    ExtTool.CmdLineParams:=Params;
+    if ScanForFPCMessages then
+      ExtTool.AddParsers(SubToolFPC);
+    if ScanForMakeMessages then
+      ExtTool.AddParsers(SubToolMake);
+    if ExtTool.ParserCount=0 then
+      ExtTool.AddParsers(SubToolDefault);
+    // run
+    ExtTool.Execute;
+    ExtTool.WaitForExit;
+    if ExtTool.ErrorMessage='' then
+      Result:=mrOK;
+  finally
+    ExtTool.Release(Self);
+  end;
   {$ELSE}
   ExtTool:=TIDEExternalToolOptions.Create;
   try

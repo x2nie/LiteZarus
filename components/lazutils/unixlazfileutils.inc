@@ -110,7 +110,7 @@ begin
       raise EFOpenError.Create(AText);
     end else begin
       if not FilenameIsAbsolute(LinkFilename) then
-        Result:=ExpandFileNameUTF8(ExtractFilePath(Result)+LinkFilename)
+        Result:=ResolveDots(ExtractFilePath(Result)+LinkFilename)
       else
         Result:=LinkFilename;
     end;
@@ -120,6 +120,14 @@ begin
     raise EFOpenError.Create('too many links, maybe an endless loop.')
   else
     Result:='';
+end;
+
+function GetPhysicalFilename(const Filename: string;
+  OnError: TPhysicalFilenameOnError): string;
+begin
+  Result:=GetUnixPhysicalFilename(Filename,OnError=pfeException);
+  if (Result='') and (OnError=pfeOriginal) then
+    Result:=Filename;
 end;
 
 function GetUnixPhysicalFilename(const Filename: string;
@@ -150,6 +158,7 @@ begin
       end;
     end;
   until false;
+  Result:=ResolveDots(Result);
 end;
 
 function CreateDirUTF8(const NewDir: String): Boolean;

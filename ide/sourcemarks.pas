@@ -41,7 +41,11 @@ uses
   Classes, SysUtils, AVL_Tree, Graphics, Controls, LCLProc,
   MenuIntf,
   SynEdit, SynEditMarks, SynEditMarkupGutterMark,
-  SrcEditorIntf;
+  SrcEditorIntf
+  {$IFDEF EnableNewExtTools}
+  , IDEExternToolIntf, etSrcEditMarks
+  {$ENDIF}
+  ;
   
 type
   TAdditionalHilightAttribute =
@@ -187,6 +191,9 @@ type
     FCurrentLineBreakPointImg: Integer;
     FCurrentLineImg: Integer;
     FCurrentLineDisabledBreakPointImg: Integer;
+    {$IFDEF EnableNewExtTools}
+    FExtToolsMarks: TETMarks;
+    {$ENDIF}
     FSourceLineImg: Integer;
     FImgList: TImageList;
     fInactiveBreakPointImg: Integer;
@@ -194,7 +201,6 @@ type
     fInvalidDisabledBreakPointImg: Integer;
     fItems: TList;// list of TSourceMark
     fMultiBreakPointImg: Integer;
-    FOnGetFilename: TGetFilenameEvent;
     FOnAction: TMarksActionEvent;
     fSortedItems: TAVLTree;// tree of TSourceMark
     fUnknownBreakPointImg: Integer;
@@ -212,7 +218,6 @@ type
     function AddCustomMark(TheOwner: TSourceEditorBase; Data: TObject;
                            MarkClass: TSourceMarkClass): TSourceMark;
     function AddImage(const ResName: string): integer;
-    function GetFilename(AMark: TSourceMark): string;
     procedure Clear;
     procedure Delete(Index: integer);
     procedure Remove(AMark: TSourceMark);
@@ -227,9 +232,10 @@ type
   public
     property ImgList: TImageList read FImgList write FImgList;
     property Items[Index: integer]: TSourceMark read GetItems; default;
-    property OnGetFilename: TGetFilenameEvent read FOnGetFilename
-                                              write FOnGetFilename;
     property OnAction: TMarksActionEvent read FOnAction write FOnAction;
+    {$IFDEF EnableNewExtTools}
+    property ExtToolsMarks: TETMarks read FExtToolsMarks;
+    {$ENDIF}
   public
     // icon index
     property ActiveBreakPointImg: Integer read fActiveBreakPointImg;
@@ -435,22 +441,20 @@ begin
   if Result <> 0 then exit;
   Result:=Priority-OtherMark.Priority;
   if Result <> 0 then exit;
-  Result := PtrInt(Self) - PtrInt(OtherMark);
+  Result := ComparePointers(Self,OtherMark);
 end;
 
 function TSourceMark.CompareEditorAndLine(ASrcEditID: TObject;
   ALine: integer): integer;
 begin
-  Result := PtrInt(SourceEditorID) - PtrInt(ASrcEditID);
+  Result := ComparePointers(SourceEditorID,ASrcEditID);
   if Result <> 0 then Exit;
   Result := Line - ALine;
 end;
 
 function TSourceMark.GetFilename: string;
 begin
-  Result:='';
-  if FSourceMarks=nil then exit;
-  Result:=FSourceMarks.GetFilename(Self);
+  Result:=FSourceEditorID.Filename;
 end;
 
 function TSourceMark.GetHint: string;
@@ -536,6 +540,13 @@ end;
 procedure TSourceMarks.CreateImageList;
 var
   i: Integer;
+  {$IFDEF EnableNewExtTools}
+  ImgIDFatal: Integer;
+  ImgIDError: Integer;
+  ImgIDWarning: Integer;
+  ImgIDNote: Integer;
+  ImgIDHint: Integer;
+  {$ENDIF}
 begin
   // create default mark icons
   ImgList:=TImageList.Create(Self);
@@ -568,6 +579,28 @@ begin
   FCurrentLineDisabledBreakPointImg := AddImage('debugger_current_line_disabled_breakpoint');
   // load source line
   FSourceLineImg:=AddImage('debugger_source_line');
+
+  {$IFDEF EnableNewExtTools}
+  ExtToolsMarks.ImageList:=ImgList;
+  ImgIDFatal:=AddImage('state11x11_fatal');
+  ImgIDError:=AddImage('state11x11_error');
+  ImgIDWarning:=AddImage('state11x11_warning');
+  ImgIDNote:=AddImage('state11x11_note');
+  ImgIDHint:=AddImage('state11x11_hint');
+  ExtToolsMarks.MarkStyles[mluNone].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluProgress].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluDebug].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluVerbose3].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluVerbose2].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluVerbose].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluHint].ImageIndex:=ImgIDHint;
+  ExtToolsMarks.MarkStyles[mluNote].ImageIndex:=ImgIDNote;
+  ExtToolsMarks.MarkStyles[mluWarning].ImageIndex:=ImgIDWarning;
+  ExtToolsMarks.MarkStyles[mluImportant].ImageIndex:=-1;
+  ExtToolsMarks.MarkStyles[mluError].ImageIndex:=ImgIDError;
+  ExtToolsMarks.MarkStyles[mluFatal].ImageIndex:=ImgIDFatal;
+  ExtToolsMarks.MarkStyles[mluPanic].ImageIndex:=ImgIDFatal;
+  {$ENDIF}
 end;
 
 function TSourceMarks.FindFirstMarkNode(ASrcEditID: TObject; ALine: integer
@@ -593,12 +626,18 @@ begin
   inherited Create(TheOwner);
   fItems:=TList.Create;
   fSortedItems:=TAVLTree.Create(@CompareSourceMarks);
+  {$IFDEF EnableNewExtTools}
+  FExtToolsMarks:=TETMarks.Create(nil);
+  {$ENDIF}
   CreateImageList;
 end;
 
 destructor TSourceMarks.Destroy;
 begin
   Clear;
+  {$IFDEF EnableNewExtTools}
+  FreeAndNil(FExtToolsMarks);
+  {$ENDIF}
   FreeThenNil(FItems);
   FreeThenNil(fSortedItems);
   inherited Destroy;
@@ -780,14 +819,6 @@ end;
 function TSourceMarks.AddImage(const ResName: string): integer;
 begin
   Result := ImgList.AddResourceName(HInstance, Resname);
-end;
-
-function TSourceMarks.GetFilename(AMark: TSourceMark): string;
-begin
-  Result:='';
-  if (AMark=nil) or (not Assigned(OnGetFilename)) then exit;
-  if AMark.SourceEditor=nil then exit;
-  Result:=OnGetFilename(AMark.SourceEditor);
 end;
 
 initialization

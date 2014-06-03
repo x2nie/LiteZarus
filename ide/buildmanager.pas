@@ -37,12 +37,15 @@ uses
   Classes, SysUtils, AVL_Tree,
   // LCL
   LConvEncoding, InterfaceBase, LCLProc, Dialogs, FileUtil, Laz2_XMLCfg,
-  LazUTF8, Forms, Controls,
+  LazUTF8, LazFileUtils, LazFileCache, Forms, Controls,
   // codetools
   ExprEval, BasicCodeTools, CodeToolManager, DefineTemplates, CodeCache,
   FileProcs, CodeToolsCfgScript, CodeToolsStructs,
   // IDEIntf
-  SrcEditorIntf, ProjectIntf, MacroIntf, IDEDialogs, IDEExternToolIntf,
+  {$IFNDEF EnableNewExtTools}
+  SrcEditorIntf,
+  {$ENDIF}
+  ProjectIntf, MacroIntf, IDEDialogs, IDEExternToolIntf,
   CompOptsIntf, LazIDEIntf, MacroDefIntf, IDEMsgIntf,
   // IDE
   LazarusIDEStrConsts, DialogProcs, IDEProcs, CodeToolsOptions, InputHistory,
@@ -813,7 +816,7 @@ procedure TBuildManager.RescanCompilerDefines(ResetBuildTarget,
         mtError,[mbOk]);
       exit(false);
     end;
-    Filename:=ReadAllLinks(Cfg.RealCompiler,false);
+    Filename:=GetPhysicalFilenameCached(Cfg.RealCompiler,true);
     if (Filename='') then begin
       IDEMessageDialog('Error','Compiler executable is missing: '+Cfg.RealCompiler,
         mtError,[mbOk]);

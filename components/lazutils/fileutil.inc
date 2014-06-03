@@ -220,20 +220,13 @@ begin
   Result := LazFileUtils.CompareFilenamesIgnoreCase(Filename1, Filename2);
 end;
 
-function CompareFilenames(const Filename1, Filename2: string;
-  ResolveLinks: boolean): integer;
+function ComparePhysicalFilenames(const Filename1, Filename2: string): integer;
 var
   File1: String;
   File2: String;
 begin
-  File1:=Filename1;
-  File2:=Filename2;
-  if ResolveLinks then begin
-    File1:=ReadAllLinks(File1,false);
-    if (File1='') then File1:=Filename1;
-    File2:=ReadAllLinks(File2,false);
-    if (File2='') then File2:=Filename2;
-  end;
+  File1:=GetPhysicalFilename(Filename1,pfeOriginal);
+  File2:=GetPhysicalFilename(Filename2,pfeOriginal);
   Result:=CompareFilenames(File1,File2);
 end;
 
@@ -255,7 +248,10 @@ begin
     System.Move(Filename1^,File1[1],Len1);
     SetLength(File2,Len2);
     System.Move(Filename2^,File2[1],Len2);
-    Result:=CompareFilenames(File1,File2,true);
+    if ResolveLinks then
+      Result:=ComparePhysicalFilenames(File1,File2)
+    else
+      Result:=CompareFilenames(File1,File2);
   end else begin
     {$IFDEF NotLiteralFilenames}
     SetLength(File1,Len1);
@@ -468,7 +464,7 @@ begin
     Result:=SearchFileInPath(Result,'',GetEnvironmentVariableUTF8('PATH'),':',Flags);
   end;
   // resolve links
-  Result:=ReadAllLinks(Result,false);
+  Result:=GetPhysicalFilename(Result,pfeOriginal);
   // extract file path and expand to full name
   Result:=ExpandFileNameUTF8(ExtractFilePath(Result));
 end;

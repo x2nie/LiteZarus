@@ -179,6 +179,9 @@ begin
   CaptureExceptions:=false;
   LCLProc.SendApplicationMessageFunction:=nil;
   OnGetApplicationName := nil;
+
+  if Application=Self then
+    Application:=nil;
 end;
 
 procedure TApplication.ActivateHint(CursorPos: TPoint; CheckHintControlChange: Boolean);
@@ -370,6 +373,10 @@ end;
 ------------------------------------------------------------------------------}
 procedure TApplication.ProcessMessages;
 begin
+  if Self=nil then begin
+    // when the programmer did a mistake, avoid getting strange errors
+    raise Exception.Create('Application=nil');
+  end;
   WidgetSet.AppProcessMessages;
   ProcessAsyncCallQueue;
 end;
