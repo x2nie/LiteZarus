@@ -339,7 +339,8 @@ end;
 constructor TDataRoom.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FColor := $00FFFFFF;  
+  //FColor := $00FFFFFF;
+  FColor := $80000005;
 end;
 
 { TMyButton }
