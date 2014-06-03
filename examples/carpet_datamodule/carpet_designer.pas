@@ -224,8 +224,12 @@ procedure TCarpetMediator.Paint;
                     AWidget.Height-AWidget.BorderBottom+1);
         end;
         // caption
+        Font.Style:=[fsBold];
         TextOut(5,2,AWidget.Caption);
       end;
+      //if csDesigning in AWidget.ComponentState then
+      //      TextOut(5,22,'DesignTime');
+
       // children
       if AWidget.ChildCount>0 then begin
         SaveHandleState;

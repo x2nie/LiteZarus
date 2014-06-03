@@ -5,10 +5,18 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs;
+  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
+  Menus;
 
 type
+
+  { TForm1 }
+
   TForm1 = class(TForm)
+    Memo1: TMemo;
+    PopupMenu1: TPopupMenu;
+    PopupMenu2: TPopupMenu;
+    procedure Memo1Change(Sender: TObject);
   private
     { private declarations }
   public
@@ -21,6 +29,13 @@ var
 implementation
 
 {$R *.lfm}
+
+{ TForm1 }
+
+procedure TForm1.Memo1Change(Sender: TObject);
+begin
+
+end;
 
 end.
 

@@ -15,6 +15,7 @@ type
     BufDataset1: TBufDataset;
     Carpet1: TCarpet;
     Carpet2: TCarpet;
+    Carpet3: TCarpet;
     DataSource1: TDataSource;
   private
     { private declarations }
