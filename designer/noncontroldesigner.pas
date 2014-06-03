@@ -109,6 +109,7 @@ constructor TNonControlDesignerForm.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
   FFrameWidth := 1;
+  DoubleBuffered:= true;//x2nie
   ControlStyle := ControlStyle - [csAcceptsControls];
 end;
 
@@ -128,7 +129,7 @@ procedure TNonControlDesignerForm.Paint;
 var
   ARect: TRect;
 begin
-  inherited Paint;
+  //inherited Paint;
   with Canvas do begin
     if LookupRoot is TDataModule then
     begin
