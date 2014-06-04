@@ -1089,6 +1089,19 @@ var
   i: Integer;
 begin
   Result:=nil;
+  if Mediator <> nil then
+  begin
+    for i:=0 to ControlSelection.Count-1 do begin
+      if Mediator.ParentAcceptsChild(TComponent(ControlSelection[i].Persistent), nil)
+      and (not ControlSelection[i].ParentInSelection) then begin
+        Result:=TWinControl(ControlSelection[i].Persistent);
+        if GetLookupRootForComponent(Result)<>FLookupRoot then
+          Result:=nil;
+        break;
+      end;
+    end;
+  end
+  else
   for i:=0 to ControlSelection.Count-1 do begin
     if (ControlSelection[i].IsTWinControl)
     and (csAcceptsControls in
