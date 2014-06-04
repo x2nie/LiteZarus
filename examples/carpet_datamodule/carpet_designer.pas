@@ -248,7 +248,8 @@ procedure TCarpetMediator.Paint;
   end;
 
 begin
-  PaintWidget(DataRoom);
+  if not (csDestroying in DataRoom.ComponentState) then
+    PaintWidget(DataRoom);
   inherited Paint;
 end;
 

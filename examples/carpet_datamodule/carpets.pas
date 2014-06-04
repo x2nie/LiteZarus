@@ -204,7 +204,7 @@ procedure TCustomCarpet.SetParent(const AValue: TCustomCarpet);
 begin
   if FParent=AValue then exit;
   if FParent<>nil then begin
-    Invalidate;
+    //Invalidate;
     FParent.RemoveCarpet(Self);
   end;
   if AValue is TCustomCarpet then //allowed to use outside dataroom (such form, datamodule)
@@ -286,10 +286,11 @@ begin
 end;
 
 destructor TCustomCarpet.Destroy;
+var i : integer;
 begin
   Parent:=nil;
-  while ChildCount>0 do
-    RemoveCarpet( Children[ChildCount-1]);
+  for i := ChildCount-1 downto 0 do
+    RemoveCarpet( Children[i]);
   FreeAndNil(FChilds);
   inherited Destroy;
 end;
@@ -301,7 +302,7 @@ end;
 
 procedure TCustomCarpet.RemoveCarpet(AChild: TCustomCarpet);
 begin
-  if FChilds.IndexOf(AChild) > 0 then
+  if FChilds.IndexOf(AChild) >= 0 then
   begin
     FChilds.Remove(AChild);
     AChild.Parent := nil;
