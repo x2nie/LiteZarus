@@ -82,7 +82,7 @@ type
 procedure Register;
 
 implementation
-uses Math, GraphType, PropEdits,GraphPropEdits;
+uses Math, GraphType, PropEdits,GraphPropEdits, CarpetPropEdits;
 
 procedure Register;
 begin
@@ -91,18 +91,8 @@ begin
   RegisterProjectFileDescriptor(TFileDescPascalUnitWithDataRoom.Create,
                                 FileDescGroupName);
 
-  RegisterPropertyEditor(TypeInfo(Cardinal), TCustomCarpet, 'Color', TColorPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(Cardinal), TCustomCarpet, 'Color', TCarpetColorPropertyEditor);
 end;
-
-function GetShadowColor(BaseColor: TColor): TColor;
-//taken from http://www.swissdelphicenter.ch/torry/showcode.php?id=1194
-begin
-  Result := RGB(
-    Max(GetRValue(ColorToRGB(BaseColor)) - 64, 0),
-    Max(GetGValue(ColorToRGB(BaseColor)) - 64, 0),
-    Max(GetBValue(ColorToRGB(BaseColor)) - 64, 0));
-end;
-
 
 { TCarpetMediator }
 
@@ -268,7 +258,7 @@ end;
 function TCarpetMediator.ParentAcceptsChild(Parent: TComponent;
   Child: TComponentClass): boolean;
 begin
-  Result:=(Parent is TCustomCarpet) and (Child.InheritsFrom(TCustomCarpet))
+  Result:=(Parent is TCustomCarpet) and ((Child = nil) or Child.InheritsFrom(TCustomCarpet))
     and (TCustomCarpet(Parent).AcceptChildrenAtDesignTime);
 end;
 
