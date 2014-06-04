@@ -229,6 +229,8 @@ procedure TCarpetMediator.Paint;
                              AWidget.Height-AWidget.BorderTop-AWidget.BorderBottom)<>NullRegion
         then begin
           for i:=0 to AWidget.ChildCount-1 do begin
+            if csDestroying in AWidget.Children[i].ComponentState then
+               continue;
             SaveHandleState;
             Child:=AWidget.Children[i];
             // clip child area
