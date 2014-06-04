@@ -1,6 +1,6 @@
 object DataRoom1: TDataRoom1
-  Left = 363
-  Top = 136
+  Left = 347
+  Top = 88
   Width = 750
   Height = 404
   Visible = False
@@ -37,8 +37,8 @@ object DataRoom1: TDataRoom1
     Caption = 'Carpet3'
   end
   object Carpet4: TCarpet
-    Left = 315
-    Top = 100
+    Left = 43
+    Top = -4
     Width = 304
     Height = 166
     Visible = False
@@ -47,8 +47,6 @@ object DataRoom1: TDataRoom1
     BorderBottom = 1
     Color = 16776132
     Caption = 'Carpet1'
-    left = 28
-    top = 28
   end
   object BufDataset1: TBufDataset
     FieldDefs = <>

@@ -1,0 +1,18 @@
+object DataRoom1: TDataRoom1
+  Left = 323
+  Top = 134
+  Width = 339
+  Height = 283
+  Visible = False
+  Color = -2147483643
+  Caption = 'DataRoom1'
+  object Carpet1: TCarpet
+    Left = 11
+    Top = 4
+    Width = 164
+    Height = 178
+    Visible = False
+    Color = 7994778
+    Caption = 'Carpet1'
+  end
+end
