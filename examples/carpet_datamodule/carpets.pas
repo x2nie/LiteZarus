@@ -85,6 +85,7 @@ type
     procedure SetName(const NewName: TComponentName); override;
     procedure SetParentComponent(Value: TComponent); override;
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
+    procedure RemoveCarpet(AChild: TCustomCarpet);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -204,7 +205,7 @@ begin
   if FParent=AValue then exit;
   if FParent<>nil then begin
     Invalidate;
-    FParent.FChilds.Remove(Self);
+    FParent.RemoveCarpet(Self);
   end;
   if AValue is TCustomCarpet then //allowed to use outside dataroom (such form, datamodule)
     FParent:=AValue;
@@ -287,7 +288,8 @@ end;
 destructor TCustomCarpet.Destroy;
 begin
   Parent:=nil;
-  while ChildCount>0 do Children[ChildCount-1].Free;
+  while ChildCount>0 do
+    RemoveCarpet( Children[ChildCount-1]);
   FreeAndNil(FChilds);
   inherited Destroy;
 end;
@@ -295,6 +297,15 @@ end;
 function TCustomCarpet.ChildCount: integer;
 begin
   Result:=FChilds.Count;
+end;
+
+procedure TCustomCarpet.RemoveCarpet(AChild: TCustomCarpet);
+begin
+  if FChilds.IndexOf(AChild) > 0 then
+  begin
+    FChilds.Remove(AChild);
+    AChild.Parent := nil;
+  end;
 end;
 
 procedure TCustomCarpet.SetBounds(NewLeft, NewTop, NewWidth, NewHeight: integer);
@@ -325,7 +336,8 @@ end;
 
 procedure TCustomCarpet.Invalidate;
 begin
-  InvalidateRect(Rect(0,0,Width,Height),false);
+  if not (csDestroying in ComponentState) then
+    InvalidateRect(Rect(0,0,Width,Height),false);
 end;
 
 { TMyForm }
