@@ -20,7 +20,7 @@
     </CompilerOptions>
     <License Value="LGPL 2.1 "/>
     <Version Major="1"/>
-    <Files Count="3">
+    <Files Count="4">
       <Item1>
         <Filename Value="README.txt"/>
         <Type Value="Text"/>
@@ -34,6 +34,10 @@
         <Filename Value="carpets.pas"/>
         <UnitName Value="Carpets"/>
       </Item3>
+      <Item4>
+        <Filename Value="carpetpropedits.pas"/>
+        <UnitName Value="CarpetPropEdits"/>
+      </Item4>
     </Files>
     <Type Value="DesignTime"/>
     <RequiredPkgs Count="2">

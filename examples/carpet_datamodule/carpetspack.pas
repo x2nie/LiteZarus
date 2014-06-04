@@ -7,7 +7,7 @@ unit CarpetsPack;
 interface
 
 uses
-  Carpet_Designer, Carpets, LazarusPackageIntf;
+  Carpet_Designer, Carpets, CarpetPropEdits, LazarusPackageIntf;
 
 implementation
 
