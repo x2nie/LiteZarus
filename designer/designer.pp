@@ -1195,9 +1195,9 @@ var
         or (P.Y+NonVisualCompWidth>Form.ClientHeight) then
           break;
       until false;
-      AComponent.DesignInfo := LeftTopToDesignInfo(
-        SmallInt(Max(0, Min(P.x, Form.ClientWidth - NonVisualCompWidth))),
-        SmallInt(Max(0, Min(P.y, Form.ClientHeight - NonVisualCompWidth))));
+      SetComponentLeftTopOrDesignInfo(AComponent,
+        Max(0, Min(P.x, Form.ClientWidth - NonVisualCompWidth)),
+        Max(0, Min(P.y, Form.ClientHeight - NonVisualCompWidth)));
     end;
   end;
 
