@@ -4,18 +4,54 @@ object DataRoom1: TDataRoom1
   Width = 750
   Height = 404
   Visible = False
-  Color = -2147483643
+  Color = 0
   Caption = 'DataRoom1'
-  object Carpet1: TCarpet
-    Left = 219
+  object Carpet3: TCarpet
+    Left = 515
+    Top = -188
+    Width = 192
+    Height = 168
+    Visible = False
+    Color = 16711935
+    Caption = 'Carpet3'
+  end
+  object Carpet6: TCarpet
+    Left = 29
+    Top = 0
+    Width = 50
+    Height = 50
+    Visible = False
+    Color = 16711680
+    Caption = 'Carpet6'
+  end
+  object Carpet7: TCarpet
+    Left = 139
+    Top = -4
+    Width = 50
+    Height = 50
+    Visible = False
+    Color = 16711935
+    Caption = 'Carpet7'
+  end
+  object Carpet8: TCarpet
+    Left = 139
     Top = 60
+    Width = 50
+    Height = 50
+    Visible = False
+    Color = 16711808
+    Caption = 'Carpet8'
+  end
+  object Carpet1: TCarpet
+    Left = 56
+    Top = 56
     Width = 188
     Height = 166
     Visible = False
     BorderLeft = 1
     BorderRight = 1
     BorderBottom = 1
-    Color = 16776132
+    Color = 255
     Caption = 'Carpet1'
     object Carpet2: TCarpet
       Left = 23
@@ -26,27 +62,29 @@ object DataRoom1: TDataRoom1
       Color = 12639424
       Caption = 'Carpet2'
     end
-  end
-  object Carpet3: TCarpet
-    Left = 11
-    Top = 60
-    Width = 192
-    Height = 168
-    Visible = False
-    Color = 12254923
-    Caption = 'Carpet3'
+    object Carpet5: TCarpet
+      Left = 31
+      Top = -36
+      Width = 50
+      Height = 50
+      Visible = False
+      Color = 7994778
+      Caption = 'Carpet5'
+    end
   end
   object Carpet4: TCarpet
-    Left = 43
-    Top = -4
+    Left = 259
+    Top = 148
     Width = 304
     Height = 166
     Visible = False
     BorderLeft = 1
     BorderRight = 1
     BorderBottom = 1
-    Color = 16776132
+    Color = 65280
     Caption = 'Carpet1'
+    left = 28
+    top = 28
   end
   object BufDataset1: TBufDataset
     FieldDefs = <>
@@ -54,7 +92,7 @@ object DataRoom1: TDataRoom1
     top = 112
   end
   object DataSource1: TDataSource
-    left = 600
-    top = 264
+    left = 287
+    top = 96
   end
 end

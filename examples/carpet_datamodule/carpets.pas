@@ -207,7 +207,7 @@ begin
     //Invalidate;
     FParent.RemoveCarpet(Self);
   end;
-  if AValue is TCustomCarpet then //allowed to use outside dataroom (such form, datamodule)
+  if (AValue is TCustomCarpet) or (AValue = nil) then //allowed to use outside dataroom (such form, datamodule)
     FParent:=AValue;
   if FParent<>nil then begin
     FParent.FChilds.Add(Self);
@@ -245,7 +245,7 @@ end;
 
 procedure TCustomCarpet.SetParentComponent(Value: TComponent);
 begin
-  if Value is TCustomCarpet then
+  if (Value is TCustomCarpet) or (Value = nil) then
     Parent:=TCustomCarpet(Value);
 end;
 
@@ -290,7 +290,7 @@ var i : integer;
 begin
   Parent:=nil;
   for i := ChildCount-1 downto 0 do
-    RemoveCarpet( Children[i]);
+    Children[i].Free;
   FreeAndNil(FChilds);
   inherited Destroy;
 end;
