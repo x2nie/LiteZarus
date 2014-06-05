@@ -17,6 +17,10 @@ type
     Carpet2: TCarpet;
     Carpet3: TCarpet;
     Carpet4: TCarpet;
+    Carpet5: TCarpet;
+    Carpet6: TCarpet;
+    Carpet7: TCarpet;
+    Carpet8: TCarpet;
     DataSource1: TDataSource;
   private
     { private declarations }
