@@ -21,6 +21,8 @@ type
     Carpet6: TCarpet;
     Carpet7: TCarpet;
     Carpet8: TCarpet;
+    Carpet9: TCarpet;
+    CarpetLabel1: TCarpetLabel;
     DataSource1: TDataSource;
   private
     { private declarations }

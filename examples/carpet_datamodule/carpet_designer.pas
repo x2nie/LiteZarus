@@ -82,16 +82,28 @@ type
 procedure Register;
 
 implementation
-uses Math, GraphType, PropEdits,GraphPropEdits, CarpetPropEdits;
+uses Math, GraphType, LResources,
+  PropEdits,GraphPropEdits, CarpetPropEdits, Carpet_Canvas;
 
 procedure Register;
 begin
   FormEditingHook.RegisterDesignerMediator(TCarpetMediator);
-  RegisterComponents('Standard',[TCarpet]);
+  RegisterComponents('Standard',[TCarpet, TCarpetLabel]);
   RegisterProjectFileDescriptor(TFileDescPascalUnitWithDataRoom.Create,
                                 FileDescGroupName);
 
   RegisterPropertyEditor(TypeInfo(Cardinal), TCustomCarpet, 'Color', TCarpetColorPropertyEditor);
+end;
+
+type
+  TLCLCarpetCanvasAccess = class(TLCLCarpetCanvas);
+  TCustomCarpetAccess = class(TCustomCarpet);
+
+{ Misc funcs }
+function ImpGetBorderColor(const AColor: Cardinal): Cardinal;
+//implementation
+begin
+  Result := GetShadowColor(AColor);
 end;
 
 { TCarpetMediator }
@@ -190,35 +202,12 @@ procedure TCarpetMediator.Paint;
     r : TRect;
     Child: TCustomCarpet;
   begin
-    r := Rect(0,0,AWidget.Width,AWidget.Height);
+    if AWidget.Canvas is TLCLCarpetCanvas then
+       TLCLCarpetCanvasAccess(AWidget.Canvas).LCLCanvas := LCLForm.Canvas ;
+    TCustomCarpetAccess(AWidget).Paint;
+
+
     with LCLForm.Canvas do begin
-      // fill background
-      Brush.Style:=bsSolid;
-      Brush.Color:=AWidget.Color;
-      FillRect(r);
-      if AWidget is TDataRoom then
-      begin
-        Frame3D(r, clBtnShadow,cl3DHiLight , 1);
-        Frame3d( r,cl3DDkShadow, clBtnFace,1);
-      end
-      else
-      begin
-        //Pen.Color:=clRed;
-        Pen.Color:=GetShadowColor(AWidget.Color);
-        // outer frame
-        Rectangle(0,0,AWidget.Width,AWidget.Height);
-        // inner frame
-        if AWidget.AcceptChildrenAtDesignTime then begin
-          Rectangle(AWidget.BorderLeft-1,AWidget.BorderTop-1,
-                    AWidget.Width-AWidget.BorderRight+1,
-                    AWidget.Height-AWidget.BorderBottom+1);
-        end;
-        // caption
-        Font.Style:=[fsBold];
-        TextOut(5,2,AWidget.Caption);
-      end;
-      //if csDesigning in AWidget.ComponentState then
-      //      TextOut(5,22,'DesignTime');
 
       // children
       if AWidget.ChildCount>0 then begin
@@ -229,10 +218,10 @@ procedure TCarpetMediator.Paint;
                              AWidget.Height-AWidget.BorderTop-AWidget.BorderBottom)<>NullRegion
         then begin
           for i:=0 to AWidget.ChildCount-1 do begin
-            if csDestroying in AWidget.Children[i].ComponentState then
+            Child:=AWidget.Children[i];
+            if csDestroying in Child.ComponentState then
                continue;
             SaveHandleState;
-            Child:=AWidget.Children[i];
             // clip child area
             MoveWindowOrgEx(Handle,Child.Left,Child.Top);
             if IntersectClipRect(Handle,0,0,Child.Width,Child.Height)<>NullRegion then
@@ -290,5 +279,9 @@ begin
   Result:='Create a new DataRoom for use together with Carpet components';
 end;
 
+initialization
+  Carpets.DefaultCanvasClass := Carpet_Canvas.TLCLCarpetCanvas;
+  Carpets.GetBorderColor := @ImpGetBorderColor;
+{$I carpets.lrs}
 end.
 

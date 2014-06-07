@@ -1,11 +1,10 @@
 object DataRoom1: TDataRoom1
-  Left = 347
-  Top = 88
+  Left = 536
+  Top = 114
   Width = 750
   Height = 404
   Visible = False
-  Color = 0
-  Caption = 'DataRoom1'
+  Color = -2147483643
   object Carpet3: TCarpet
     Left = 515
     Top = -188
@@ -16,55 +15,46 @@ object DataRoom1: TDataRoom1
     Caption = 'Carpet3'
   end
   object Carpet6: TCarpet
-    Left = 29
-    Top = 0
-    Width = 50
+    Left = 0
+    Top = 54
+    Width = 72
     Height = 50
     Visible = False
-    Color = 16711680
-    Caption = 'Carpet6'
+    Color = -2147483632
+    Caption = 'clBtnShadow'
   end
   object Carpet7: TCarpet
-    Left = 139
-    Top = -4
-    Width = 50
-    Height = 50
+    Left = 112
+    Top = 22
+    Width = 74
+    Height = 82
     Visible = False
     Color = 16711935
-    Caption = 'Carpet7'
-  end
-  object Carpet8: TCarpet
-    Left = 139
-    Top = 60
-    Width = 50
-    Height = 50
-    Visible = False
-    Color = 16711808
-    Caption = 'Carpet8'
+    Caption = 'cl3DHiLight'
   end
   object Carpet1: TCarpet
-    Left = 56
-    Top = 56
+    Left = 0
+    Top = 126
     Width = 188
-    Height = 166
+    Height = 208
     Visible = False
+    Color = 255
+    Caption = 'Carpet1'
     BorderLeft = 1
     BorderRight = 1
     BorderBottom = 1
-    Color = 255
-    Caption = 'Carpet1'
     object Carpet2: TCarpet
-      Left = 23
-      Top = 20
-      Width = 50
-      Height = 50
+      Left = 85
+      Top = 36
+      Width = 62
+      Height = 64
       Visible = False
       Color = 12639424
       Caption = 'Carpet2'
     end
     object Carpet5: TCarpet
-      Left = 31
-      Top = -36
+      Left = 13
+      Top = 60
       Width = 50
       Height = 50
       Visible = False
@@ -73,26 +63,51 @@ object DataRoom1: TDataRoom1
     end
   end
   object Carpet4: TCarpet
-    Left = 259
-    Top = 148
+    Left = 390
+    Top = 214
     Width = 304
     Height = 166
     Visible = False
+    Color = 65280
+    Caption = 'Carpet1'
     BorderLeft = 1
     BorderRight = 1
     BorderBottom = 1
-    Color = 65280
-    Caption = 'Carpet1'
-    left = 28
-    top = 28
+  end
+  object Carpet8: TCarpet
+    Left = 142
+    Top = 62
+    Width = 208
+    Height = 106
+    Visible = False
+    Color = 536870911
+    BorderTop = 5
+  end
+  object Carpet9: TCarpet
+    Left = 310
+    Top = 22
+    Width = 136
+    Height = 112
+    Visible = False
+    Color = 7994778
+    Caption = 'Carpet9'
+  end
+  object CarpetLabel1: TCarpetLabel
+    Left = 374
+    Top = 62
+    Width = 104
+    Height = 64
+    Visible = False
+    Caption = 'Carpet Label 10ini bagus enggak a'
+    Alignment = taRightJustify
   end
   object BufDataset1: TBufDataset
     FieldDefs = <>
-    left = 440
-    top = 112
+    left = 328
+    top = 264
   end
   object DataSource1: TDataSource
-    left = 287
-    top = 96
+    left = 264
+    top = 256
   end
 end

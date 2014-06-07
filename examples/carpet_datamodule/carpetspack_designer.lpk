@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <Package Version="4">
-    <Name Value="CarpetsPack"/>
+    <Name Value="CarpetsPack_Designer"/>
     <AddToProjectUsesSection Value="True"/>
     <Author Value="x2nie"/>
-    <AutoUpdate Value="Manually"/>
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
@@ -21,21 +20,37 @@
     </CompilerOptions>
     <License Value="LGPL 2.1 "/>
     <Version Major="1"/>
-    <Files Count="2">
+    <Files Count="4">
       <Item1>
         <Filename Value="README.txt"/>
         <Type Value="Text"/>
       </Item1>
       <Item2>
-        <Filename Value="carpets.pas"/>
-        <UnitName Value="Carpets"/>
+        <Filename Value="carpet_designer.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="Carpet_Designer"/>
       </Item2>
+      <Item3>
+        <Filename Value="carpetpropedits.pas"/>
+        <UnitName Value="CarpetPropEdits"/>
+      </Item3>
+      <Item4>
+        <Filename Value="carpet_canvas.pas"/>
+        <UnitName Value="carpet_canvas"/>
+      </Item4>
     </Files>
-    <RequiredPkgs Count="1">
+    <Type Value="DesignTime"/>
+    <RequiredPkgs Count="3">
       <Item1>
+        <PackageName Value="CarpetsPack"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="IDEIntf"/>
+      </Item2>
+      <Item3>
         <PackageName Value="FCL"/>
         <MinVersion Major="1" Valid="True"/>
-      </Item1>
+      </Item3>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

@@ -47,17 +47,21 @@ type
     procedure InvalidateRect(Sender: TObject; ARect: TRect; Erase: boolean);
   end;
 
-  { TCarpet }
+  { forward }
+  TCarpetCanvas = class;
+
 
   { TCustomCarpet }
 
   TCustomCarpet = class(TComponent)
   private
     FAcceptChildrenAtDesignTime: boolean;
+    FAlignment: TAlignment;
     FBorderBottom: integer;
     FBorderLeft: integer;
     FBorderRight: integer;
     FBorderTop: integer;
+    FCanvas: TCarpetCanvas;
     FCaption: string;
     FChilds: TFPList; // list of TCarpet
     FColor: Cardinal;
@@ -68,6 +72,7 @@ type
     FVisible: boolean;
     FWidth: integer;
     function GetChilds(Index: integer): TCustomCarpet;
+    procedure SetAlignment(AValue: TAlignment);
     procedure SetBorderBottom(const AValue: integer);
     procedure SetBorderLeft(const AValue: integer);
     procedure SetBorderRight(const AValue: integer);
@@ -86,6 +91,9 @@ type
     procedure SetParentComponent(Value: TComponent); override;
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
     procedure RemoveCarpet(AChild: TCustomCarpet);
+    procedure Paint; virtual;
+    property Caption: string read FCaption write SetCaption;
+    property Alignment : TAlignment read FAlignment write SetAlignment;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -98,54 +106,180 @@ type
     procedure InvalidateRect(ARect: TRect; Erase: boolean);
     procedure Invalidate;
     property AcceptChildrenAtDesignTime: boolean read FAcceptChildrenAtDesignTime;
+    property Canvas : TCarpetCanvas read FCanvas write FCanvas;
+    property BorderLeft: integer read FBorderLeft write SetBorderLeft;
+    property BorderRight: integer read FBorderRight write SetBorderRight;
+    property BorderTop: integer read FBorderTop write SetBorderTop;
+    property BorderBottom: integer read FBorderBottom write SetBorderBottom;
   published
     property Left: integer read FLeft write SetLeft;
     property Top: integer read FTop write SetTop;
     property Width: integer read FWidth write SetWidth;
     property Height: integer read FHeight write SetHeight;
     property Visible: boolean read FVisible write SetVisible;
-    property BorderLeft: integer read FBorderLeft write SetBorderLeft default 5;
-    property BorderRight: integer read FBorderRight write SetBorderRight default 5;
-    property BorderTop: integer read FBorderTop write SetBorderTop default 20;
-    property BorderBottom: integer read FBorderBottom write SetBorderBottom default 5;
     property Color : Cardinal read FColor write SetColor;
-    property Caption: string read FCaption write SetCaption;
   end;
   TCarpetClass = class of TCustomCarpet;
 
-  { TMyForm }
-
-  TDataRoom = class(TCustomCarpet)
-  private
-    FDesigner: ICarpetDesigner;
-  protected
-    procedure InternalInvalidateRect(ARect: TRect; Erase: boolean); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    property Designer: ICarpetDesigner read FDesigner write FDesigner;
-  end;
-
-  { TMyButton
-    A widget that does not allow children at design time }
-
-  TMyButton = class(TCustomCarpet)
-  public
-    constructor Create(AOwner: TComponent); override;
-  end;
 
   { TMyGroupBox
     A widget that does allow children at design time }
 
   TCarpet = class(TCustomCarpet)
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Caption;
+    property BorderLeft default 5;
+    property BorderRight default 5;
+    property BorderTop default 20;
+    property BorderBottom default 5;
   end;
 
+
+  { TCarpetLabel
+    A widget that does not allow children at design time }
+
+  TCarpetLabel = class(TCustomCarpet)
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Caption;
+    property Color default $1FFFFFFF;
+    property Alignment;
+  end;
+
+
+  { TMyForm }
+
+  { TDataRoom }
+
+  TDataRoom = class(TCustomCarpet)
+  private
+    FDesigner: ICarpetDesigner;
+  protected
+    procedure Paint; override;
+    procedure InternalInvalidateRect(ARect: TRect; Erase: boolean); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    property Designer: ICarpetDesigner read FDesigner write FDesigner;
+    property BorderLeft default 2;
+    property BorderRight default 2;
+    property BorderTop default 2;
+    property BorderBottom default 2;
+  end;
+
+
+  { TCarpetCanvas }
+
+  TCarpetCanvas = class(TPersistent)
+  public
+    procedure FillRect(const X1,Y1,X2,Y2: Integer; const AColor: Cardinal); virtual;
+    procedure Frame3D(var ARect: TRect; TopColor, BottomColor: Cardinal;
+                      const FrameWidth: integer); virtual;
+    procedure Rectangle(X1,Y1,X2,Y2: Integer; AColor: Cardinal); virtual;
+    procedure TextOut(X,Y: Integer; const Text: String); virtual;
+    procedure TextRect(ARect: TRect; const Text: string; Alignment: TAlignment); virtual;
+  end;
+  TCarpetCanvasClass = class of TCarpetCanvas;
+
+
+
+  { assumed funcs & var below is taken from external lib }
+type
+  TGetBorderColorProc = function(const AColor: Cardinal): Cardinal;
+
+var
+  DefaultCanvasClass : TCarpetCanvasClass;
+  GetBorderColor : TGetBorderColorProc;
+
 implementation
+
+const
+  clNone    = $1FFFFFFF;
+
+{ Misc funcs }
+
+function GetBorderColorDummyProc(const AColor: Cardinal): Cardinal;
+// it should be replaced by designtime func
+begin
+  result := AColor;
+end;
+
+{ TCarpetCanvas }
+
+procedure TCarpetCanvas.FillRect(const X1, Y1, X2, Y2: Integer;
+  const AColor: Cardinal);
+begin
+
+end;
+
+procedure TCarpetCanvas.Frame3D(var ARect: TRect; TopColor,
+  BottomColor: Cardinal; const FrameWidth: integer);
+begin
+
+end;
+
+procedure TCarpetCanvas.Rectangle(X1, Y1, X2, Y2: Integer; AColor: Cardinal);
+begin
+
+end;
+
+procedure TCarpetCanvas.TextOut(X, Y: Integer; const Text: String);
+begin
+
+end;
+
+procedure TCarpetCanvas.TextRect(ARect: TRect; const Text: string; Alignment: TAlignment);
+begin
+
+end;
+
+
+{ TCarpet }
+
+procedure TCarpet.Paint;
+begin
+  inherited Paint;
+  with Canvas do begin
+    Rectangle(0,0,Width,Height, GetBorderColor(Color));
+    // inner frame
+    //if AWidget.AcceptChildrenAtDesignTime then begin
+      Rectangle(BorderLeft-1,BorderTop-1,
+                Width-BorderRight+1,
+                Height-BorderBottom+1, GetBorderColor(Color));
+
+    // caption
+    //Font.Style:=[fsBold];
+    TextOut(5,2,Caption);
+  end;
+end;
+
+constructor TCarpet.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FBorderLeft:=5;
+  FBorderRight:=5;
+  FBorderBottom:=5;
+  FBorderTop:=20;
+end;
 
 { TCarpet }
 
 function TCustomCarpet.GetChilds(Index: integer): TCustomCarpet;
 begin
   Result:=TCustomCarpet(FChilds[Index]);
+end;
+
+procedure TCustomCarpet.SetAlignment(AValue: TAlignment);
+begin
+  if FAlignment=AValue then Exit;
+  FAlignment:=AValue;
+  Invalidate;
 end;
 
 procedure TCustomCarpet.SetBorderBottom(const AValue: integer);
@@ -277,12 +411,12 @@ constructor TCustomCarpet.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FChilds:=TFPList.Create;
-  FBorderLeft:=5;
-  FBorderRight:=5;
-  FBorderBottom:=5;
-  FBorderTop:=20;
-  FColor := $0079FD9A;  
+  FColor := $0079FD9A;
+  FWidth :=136;
+  FHeight := 112;
   FAcceptChildrenAtDesignTime:=true;
+  if DefaultCanvasClass <> nil then
+    FCanvas := DefaultCanvasClass.Create;
 end;
 
 destructor TCustomCarpet.Destroy;
@@ -292,6 +426,8 @@ begin
   for i := ChildCount-1 downto 0 do
     Children[i].Free;
   FreeAndNil(FChilds);
+  if assigned(FCanvas) then
+     FCanvas.Free;
   inherited Destroy;
 end;
 
@@ -307,6 +443,12 @@ begin
     FChilds.Remove(AChild);
     AChild.Parent := nil;
   end;
+end;
+
+procedure TCustomCarpet.Paint;
+begin
+  if Color <> clNone then
+    FCanvas.FillRect(0,0,Width,Height, self.Color);
 end;
 
 procedure TCustomCarpet.SetBounds(NewLeft, NewTop, NewWidth, NewHeight: integer);
@@ -343,6 +485,20 @@ end;
 
 { TMyForm }
 
+procedure TDataRoom.Paint;
+const
+  clBtnShadow = $80000010;
+  cl3DHiLight = $80000014;
+  cl3DDkShadow= $80000015;
+  clBtnFace   = $8000000F;
+var r : TRect;
+begin
+  inherited Paint;
+  r := Rect(0,0,Width,Height);
+  Canvas.Frame3D(r, clBtnShadow, cl3DHiLight, 1);
+  Canvas.Frame3d(r, cl3DDkShadow, clBtnFace, 1);
+end;
+
 procedure TDataRoom.InternalInvalidateRect(ARect: TRect; Erase: boolean);
 begin
   if (Parent=nil) and (Designer<>nil) then
@@ -352,17 +508,34 @@ end;
 constructor TDataRoom.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  //FColor := $00FFFFFF;
-  FColor := $80000005;
+  FBorderLeft:=2;
+  FBorderRight:=2;
+  FBorderBottom:=2;
+  FBorderTop:=2;
+  FWidth  := 150;
+  FHeight := 150;
+  FColor  := $80000005; //clWindow
 end;
 
-{ TMyButton }
+{ TCarpetLabel }
 
-constructor TMyButton.Create(AOwner: TComponent);
+procedure TCarpetLabel.Paint;
+begin
+  inherited Paint;
+  Canvas.TextRect(Rect(BorderLeft, BorderTop, Width-BorderRight, Height-BorderBottom), Caption, self.Alignment);
+end;
+
+constructor TCarpetLabel.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FColor := clNone;
   FAcceptChildrenAtDesignTime:=false;
 end;
+
+
+initialization
+  DefaultCanvasClass := TCarpetCanvas; //it will replaced by real implemented method
+  GetBorderColor := @GetBorderColorDummyProc;
 
 end.
 
