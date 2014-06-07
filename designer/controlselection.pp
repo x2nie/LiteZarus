@@ -1432,6 +1432,7 @@ var
   CompLeft, CompTop, CompWidth, CompHeight: integer;
   DCOrigin: TPoint;
   CurItem: TSelectedControl;
+  R : TRect;
 begin
   CurItem:=Items[Index];
   if not CurItem.IsTComponent then exit;
@@ -1445,6 +1446,9 @@ begin
     ,' Component',AComponent.Name,',',CompLeft,',',CompLeft
     ,' DCOrigin=',DCOrigin.X,',',DCOrigin.Y
     );}
+
+  R := Rect(CompLeft,CompTop,CompWidth,CompHeight);
+  InvalidateRect(FForm.Handle,@R, true);//x2nie
 
   DrawMarkerAt(DC,CompLeft,CompTop,CompWidth,CompHeight);
   CurItem.Flags:=CurItem.Flags+[scfMarkersPainted];
@@ -2641,6 +2645,7 @@ begin
     CurItem:=Items[i];
     if scfMarkersPainted in CurItem.Flags then begin
       ComponentBounds:=CurItem.MarkerPaintedBounds;
+      //InvalidateRect(FForm.Handle,@ComponentBounds, true);//x2nie
       LeftMarker:=ComponentBounds.Left;
       TopMarker:=ComponentBounds.Top;
       RightMarker:=ComponentBounds.Right-MarkerSize;

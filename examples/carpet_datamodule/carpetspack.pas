@@ -7,15 +7,8 @@ unit CarpetsPack;
 interface
 
 uses
-  Carpet_Designer, Carpets, CarpetPropEdits, LazarusPackageIntf;
+  Carpets;
 
 implementation
 
-procedure Register;
-begin
-  RegisterUnit('Carpet_Designer', @Carpet_Designer.Register);
-end;
-
-initialization
-  RegisterPackage('CarpetsPack', @Register);
 end.
