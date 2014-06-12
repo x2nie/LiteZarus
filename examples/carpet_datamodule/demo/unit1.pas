@@ -13,14 +13,11 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+    Image1: TImage;
+    ImageList1: TImageList;
     Memo1: TMemo;
-    Memo2: TMemo;
-    Panel1: TPanel;
-    Panel2: TPanel;
     PopupMenu1: TPopupMenu;
     PopupMenu2: TPopupMenu;
-    PopupMenu3: TPopupMenu;
-    PopupMenu4: TPopupMenu;
     procedure Memo1Change(Sender: TObject);
   private
     { private declarations }

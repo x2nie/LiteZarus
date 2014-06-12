@@ -21,6 +21,7 @@ type
     procedure Frame3D(var ARect: TRect; TopColor, BottomColor: Cardinal;
                       const FrameWidth: integer); override;
     procedure Rectangle(X1,Y1,X2,Y2: Integer; AColor: Cardinal); override;
+    procedure StretchDraw(const DestRect: TRect; SrcGraphic: TObject); override;
     procedure TextOut(X,Y: Integer; const Text: String); override;
     procedure TextRect(ARect: TRect; const Text: string; Alignment: TAlignment); override;
 
@@ -53,6 +54,13 @@ begin
   if not assigned(LCLCanvas) then exit;
   LCLCanvas.Pen.Color:=AColor;
   LCLCanvas.Rectangle(x1,y1,x2,y2);
+end;
+
+procedure TLCLCarpetCanvas.StretchDraw(const DestRect: TRect;
+  SrcGraphic: TObject);
+begin
+  if not assigned(LCLCanvas) then exit;
+  LCLCanvas.StretchDraw(DestRect, TGraphic(SrcGraphic));
 end;
 
 procedure TLCLCarpetCanvas.TextOut(X, Y: Integer; const Text: String);

@@ -55,7 +55,6 @@ type
 
   TCustomCarpet = class(TComponent)
   private
-    FAcceptChildrenAtDesignTime: boolean;
     FAlignment: TAlignment;
     FBorderBottom: integer;
     FBorderLeft: integer;
@@ -64,7 +63,6 @@ type
     FCanvas: TCarpetCanvas;
     FCaption: string;
     FChilds: TFPList; // list of TCarpet
-    FColor: Cardinal;
     FHeight: integer;
     FLeft: integer;
     FParent: TCustomCarpet;
@@ -86,6 +84,8 @@ type
     procedure SetVisible(const AValue: boolean);
     procedure SetWidth(const AValue: integer);
   protected
+    FAcceptChildrenAtDesignTime: boolean;
+    FColor: Cardinal;
     procedure InternalInvalidateRect({%H-}ARect: TRect; {%H-}Erase: boolean); virtual;
     procedure SetName(const NewName: TComponentName); override;
     procedure SetParentComponent(Value: TComponent); override;
@@ -153,7 +153,6 @@ type
     property Alignment;
   end;
 
-
   { TMyForm }
 
   { TDataRoom }
@@ -182,6 +181,7 @@ type
     procedure Frame3D(var ARect: TRect; TopColor, BottomColor: Cardinal;
                       const FrameWidth: integer); virtual;
     procedure Rectangle(X1,Y1,X2,Y2: Integer; AColor: Cardinal); virtual;
+    procedure StretchDraw(const DestRect: TRect; SrcGraphic: TObject); virtual;
     procedure TextOut(X,Y: Integer; const Text: String); virtual;
     procedure TextRect(ARect: TRect; const Text: string; Alignment: TAlignment); virtual;
   end;
@@ -210,6 +210,7 @@ begin
   result := AColor;
 end;
 
+
 { TCarpetCanvas }
 
 procedure TCarpetCanvas.FillRect(const X1, Y1, X2, Y2: Integer;
@@ -225,6 +226,11 @@ begin
 end;
 
 procedure TCarpetCanvas.Rectangle(X1, Y1, X2, Y2: Integer; AColor: Cardinal);
+begin
+
+end;
+
+procedure TCarpetCanvas.StretchDraw(const DestRect: TRect; SrcGraphic: TObject);
 begin
 
 end;
