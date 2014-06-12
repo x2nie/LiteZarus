@@ -1,6 +1,6 @@
 object DataRoom1: TDataRoom1
-  Left = 274
-  Top = 307
+  Left = 272
+  Top = 175
   Width = 750
   Height = 404
   Visible = False
@@ -72,26 +72,27 @@ object DataRoom1: TDataRoom1
     Height = 150
     Visible = False
     Color = 14999263
-    Caption = 'Carpet1'
+    Caption = 'Image/Picture example'
     BorderLeft = 1
     BorderRight = 1
     BorderBottom = 1
   end
   object CarpetLabel1: TCarpetLabel
-    Left = 230
-    Top = 14
-    Width = 50
+    Left = 259
+    Top = 6
+    Width = 96
     Height = 50
     Visible = False
-    Caption = 'CarpetLabel1'
+    Caption = 'This is a Label'
     Alignment = taLeftJustify
   end
   object CarpetImage1: TCarpetImage
-    Left = 6
-    Top = 4
-    Width = 178
-    Height = 194
+    Left = 526
+    Top = 230
+    Width = 94
+    Height = 94
     Visible = True
+    AutoSize = True
     Picture.Data = {
       1754506F727461626C654E6574776F726B47726170686963553B000089504E47
       0D0A1A0A0000000D494844520000005E0000005E0806000000AAD2A36E000000
