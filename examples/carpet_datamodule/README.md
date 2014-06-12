@@ -5,7 +5,8 @@ It show us how to use the lazarus IDE form designer to
 design non LCL visual widgets, and as bonus you can use it in real application.
 ```
 
-
+![Carpet widgetset in designtime](https://raw.githubusercontent.com/x2nie/LiteZarus/litezarus/examples/carpet_datamodule/carpet_screenshoot.PNG "Carpet widgetset in action")
+ 
 Installation:
 Compile the packages: 
 * examples/carpet_datamodule/carpetspack.lpk 
