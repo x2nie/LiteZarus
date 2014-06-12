@@ -1,15 +1,21 @@
+```
 These packages are example of how decorate your TDataModule with coloured panel, 
 label and images.
 It show us how to use the lazarus IDE form designer to
 design non LCL visual widgets, and as bonus you can use it in real application.
+```
 
 
 Installation:
-Install the packages: 
+Compile the packages: 
 * examples/carpet_datamodule/carpetspack.lpk 
 * examples/carpet_datamodule/carpet_graphicalpack.lpk 
+
+install the package:
 * examples/carpet_datamodule/carpetspack_designer.lpk 
+
 and restart the IDE.
+
 Then open the example project examples/carpet_datamodule/demo/project1.lpi.
 Open the form of unit2.pas and you will see some non LCL controls in the
 designer as various colored rectangles.
