@@ -490,7 +490,7 @@ constructor TNonFormProxyDesignerForm.Create(AOwner: TComponent;
   ANonFormDesigner: INonFormDesigner);
 begin
   inherited CreateNew(AOwner, 1);
-
+  DoubleBuffered:= true;//x2nie
   FNonFormDesigner := ANonFormDesigner;
   FNonFormDesigner.Create;
 end;
