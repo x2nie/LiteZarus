@@ -1,6 +1,16 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
+# Pascal / Lazarus text files
+*.pp	text
+*.pas	text
+*.inc	text
+*.dfm	text
+*.lfm	text
+#*.xml	text
+#*.txt	text
+
+
 # Custom for Visual Studio
 *.cs     diff=csharp
 *.sln    merge=union
